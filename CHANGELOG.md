@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to protoAgent are documented here.
+All notable changes to protoTrader are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > `scripts/changelog.py`. See [Releasing](docs/guides/releasing.md).
 
 ## [Unreleased]
+
+## [0.14.0] - 2026-06-04
 
 ### Added
 - **Slice 6 — gated paper execution.** A `broker` plugin adds paper-only order
@@ -57,12 +59,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a quote → trend → context → news → structured-read pipeline. Optional deps in
   `requirements-finance.txt`; tools degrade to a clear install hint without them.
 
-### Fixed
-- **Plugins can now be multi-module (relative imports).** The loader sanitizes a
-  hyphenated plugin id into a valid module name and registers the package in
-  `sys.modules` before exec, so a plugin can split across files (`from .tools
-  import …`). Surfaced building `finance-data`.
-
 ### Changed
 - **Forked from protoAgent as `protoTrader`** — a natural-language trading
   *research* agent (Vibe-Trading reimagined on the protoAgent paradigm). Set
@@ -71,6 +67,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   protoAgent for fleet fix flow-down. Internal `protoagent` identifiers kept.
 
 ### Fixed
+- **Plugins can now be multi-module (relative imports).** The loader sanitizes a
+  hyphenated plugin id into a valid module name and registers the package in
+  `sys.modules` before exec, so a plugin can split across files (`from .tools
+  import …`). Surfaced building `finance-data`; upstreamed to the protoAgent
+  template.
 - **Discord "Test connection" ignored the entered token** (always reported "bot
   token is empty", even for a valid token). The discord plugin route's request
   model was a *function-local* Pydantic class, but the plugin module uses
