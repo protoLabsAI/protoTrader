@@ -1,0 +1,10 @@
+id: finance-desk
+name: Finance desk
+version: 0.1.0
+description: >-
+  protoTrader's specialist subagents (Slice 3) — market-analyst, quant, and
+  risk-manager — that the lead agent delegates to via `task` and the
+  investment-committee / quant-desk workflows compose. Maps Vibe-Trading's swarm
+  roles onto protoAgent subagents. Disable: plugins.disabled: [finance-desk].
+enabled: true
+requires_env: []

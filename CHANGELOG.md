@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Slice 3 — the desk.** A `finance-desk` plugin registers three specialist
+  **subagents** — `market-analyst`, `quant`, `risk-manager` — that the lead agent
+  delegates to via `task`. Two declarative **workflow presets** in `workflows/`:
+  `investment-committee` (bull/bear debate → risk review → PM synthesis) and
+  `quant-desk` (setup → backtest → risk → go/no-go). Replaces Vibe-Trading's swarm
+  with protoAgent subagents + workflows (ADR 0002).
 - **Slice 2 — backtesting.** A `backtest` plugin: `backtest_strategy` runs
   canonical strategies (MA cross, RSI mean-reversion, breakout, buy-hold) over
   fetched OHLCV with realistic costs/slippage, **no look-ahead**, an
