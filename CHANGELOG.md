@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Slice 2 — backtesting.** A `backtest` plugin: `backtest_strategy` runs
+  canonical strategies (MA cross, RSI mean-reversion, breakout, buy-hold) over
+  fetched OHLCV with realistic costs/slippage, **no look-ahead**, an
+  out-of-sample split, a buy-and-hold benchmark, and a stationary-bootstrap
+  Sharpe CI. A `backtest-a-strategy` skill drives an honest edge / no-edge /
+  inconclusive read. Offline engine tests included.
 - **Slice 1 — market data + ticker research.** A `finance-data` plugin (ADR
   0018) with 5 no-auth tools: `stock_quote` / `stock_price_history` /
   `stock_fundamentals` (yfinance, US equities + ETFs) and `crypto_quote` /
