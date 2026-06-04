@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Slice 5 — behavioral / Shadow Account.** A `behavioral` plugin:
+  `analyze_trade_journal` parses a journal CSV (tolerant of broker-export column
+  names), FIFO-pairs fills into round-trips, and computes a behavioral profile +
+  bias flags — loss aversion (holding losers longer), asymmetric losers, negative
+  edge (PF<1), revenge sizing, cutting winners early. A `shadow-account` skill
+  turns it into the "what if you'd followed your own best behavior" read + one or
+  two ranked fixes. Offline tests on a synthetic biased journal.
 - **Slice 4 — factors (Alpha Zoo).** A `factors` plugin: `factor_eval` and
   `factor_zoo` score price/volume factors (momentum_12_1, reversal_1m, low_vol,
   trend_200d, volume_trend) by **Information Coefficient** / rank-IC / IR over a

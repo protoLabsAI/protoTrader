@@ -1,0 +1,10 @@
+id: behavioral
+name: Behavioral (Shadow Account)
+version: 0.1.0
+description: >-
+  Trade-journal analysis for protoTrader (Slice 5) — parse a journal into a
+  behavioral profile (win rate, profit factor, hold-time asymmetry) + the biases
+  that cost money (loss aversion, asymmetric losers, revenge sizing). Pairs with
+  the shadow-account skill. Disable: plugins.disabled: [behavioral].
+enabled: true
+requires_env: []
