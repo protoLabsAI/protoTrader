@@ -1,0 +1,11 @@
+# Finance domain layer (the `finance-data` plugin, ADR 0018/0019).
+#
+# Optional extra — the base agent runs without it; the finance-data tools
+# degrade to a clear "install requirements-finance.txt" error until present.
+# Install: `pip install -r requirements-finance.txt`
+#
+# No-auth market data: yfinance (US equities/ETFs) + ccxt (crypto, 100+ public
+# exchanges). Pro/keyed sources (Tushare, Futu, broker APIs) come with later
+# slices and declare their own secrets via plugin config (ADR 0019).
+yfinance>=0.2.40
+ccxt>=4.3

@@ -84,4 +84,19 @@ subagents/workflows so it ships without touching core.
 ## Status
 
 - ✅ Fork created (private, history-preserving), identity + persona + this scope doc.
-- ⬜ Slice 1 (market data + ticker research) — next.
+- ✅ **Slice 1 — market data + ticker research.** `finance-data` plugin: 5 no-auth
+  tools (`stock_quote` / `stock_price_history` / `stock_fundamentals` via yfinance;
+  `crypto_quote` / `crypto_price_history` via ccxt). `research-a-ticker` skill drives
+  the methodology. Live-verified: protoTrader researches a ticker end-to-end with
+  real data + a structured read. (Also fixed a plugin-system gap surfaced here:
+  the loader now supports **multi-module plugins** with relative imports —
+  hyphenated id sanitized + module registered in `sys.modules` pre-exec. Needs
+  upstreaming to protoAgent.)
+- ⬜ Slice 2 (backtesting) — next.
+
+## Execution note (per operator: live execution IS a goal)
+
+Markets for Slice 1: **US equities/ETFs + crypto**. Live order placement is an
+intended eventual capability (Slice 6) — built **paper-first**, with the full gated
+stack (mandate, per-order HITL, kill-switch, enforcement limits, audit), rolled
+slowest. Research stays primary; nothing trades until Slice 6 is explicitly enabled.

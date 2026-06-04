@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Slice 1 — market data + ticker research.** A `finance-data` plugin (ADR
+  0018) with 5 no-auth tools: `stock_quote` / `stock_price_history` /
+  `stock_fundamentals` (yfinance, US equities + ETFs) and `crypto_quote` /
+  `crypto_price_history` (ccxt, public crypto). A `research-a-ticker` skill drives
+  a quote → trend → context → news → structured-read pipeline. Optional deps in
+  `requirements-finance.txt`; tools degrade to a clear install hint without them.
+
+### Fixed
+- **Plugins can now be multi-module (relative imports).** The loader sanitizes a
+  hyphenated plugin id into a valid module name and registers the package in
+  `sys.modules` before exec, so a plugin can split across files (`from .tools
+  import …`). Surfaced building `finance-data`.
+
 ### Changed
 - **Forked from protoAgent as `protoTrader`** — a natural-language trading
   *research* agent (Vibe-Trading reimagined on the protoAgent paradigm). Set
