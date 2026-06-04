@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Slice 4 — factors (Alpha Zoo).** A `factors` plugin: `factor_eval` and
+  `factor_zoo` score price/volume factors (momentum_12_1, reversal_1m, low_vol,
+  trend_200d, volume_trend) by **Information Coefficient** / rank-IC / IR over a
+  universe, with alive/weak/reversed/dead verdicts. An `evaluate-a-factor` skill
+  reads the IC honestly (sample-specific, regime-dependent — a reversed factor is
+  a finding). Offline tests on synthetic mean-reverting data.
 - **Slice 3 — the desk.** A `finance-desk` plugin registers three specialist
   **subagents** — `market-analyst`, `quant`, `risk-manager` — that the lead agent
   delegates to via `task`. Two declarative **workflow presets** in `workflows/`:
