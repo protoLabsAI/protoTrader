@@ -92,7 +92,30 @@ subagents/workflows so it ships without touching core.
   the loader now supports **multi-module plugins** with relative imports —
   hyphenated id sanitized + module registered in `sys.modules` pre-exec. Needs
   upstreaming to protoAgent.)
-- ⬜ Slice 2 (backtesting) — next.
+- ✅ **Slice 2 — backtesting.** `backtest` plugin: vectorized engine (MA cross /
+  RSI mean-rev / breakout / buy-hold) over fetched OHLCV, no look-ahead, realistic
+  costs/slippage, OOS split, buy-and-hold benchmark, bootstrap Sharpe CI.
+  `backtest-a-strategy` skill. Offline tests + live-verified (honest "trailed
+  buy-and-hold" reads).
+- ✅ **Slice 3 — the desk.** `finance-desk` plugin: 3 subagents (market-analyst,
+  quant, risk-manager) + 2 workflow presets (investment-committee, quant-desk).
+  Live-verified (lead → quant subagent backtest delegation).
+- ✅ **Slice 4 — factors / Alpha Zoo.** `factors` plugin: cross-sectional IC /
+  rank-IC / IR with sign-standardized alive/weak/reversed/dead verdicts over a
+  factor zoo. `evaluate-a-factor` skill. Offline tests + live ("low_vol reversed").
+- ✅ **Slice 5 — behavioral / Shadow Account.** `behavioral` plugin:
+  `analyze_trade_journal` → FIFO round-trips → bias flags (loss aversion,
+  asymmetric losers, negative edge, revenge sizing, cutting winners early).
+  `shadow-account` skill. Offline tests.
+- ✅ **Slice 6 — gated paper execution.** `broker` plugin: paper-only execution
+  behind the full safety stack — mandate (master switch + per-order/exposure/daily
+  limits, **OFF by default**) → filesystem kill-switch → **per-order human approval**
+  (LangGraph `interrupt`, surfaces as `input-required`) → simulated fill at a live
+  quote (+ friction) → append-only audit ledger. `mode: live` is deliberately not
+  implemented (cannot move real money). `place-a-paper-trade` skill. Offline tests
+  (gate, every limit, fill math, persistence) + live-verified (OFF→ARMED, kill-switch).
+- ⬜ Upstream the loader multi-module fix to the protoAgent template; cut the
+  first protoTrader release with Discord notes covering everything since the fork.
 
 ## Execution note (per operator: live execution IS a goal)
 

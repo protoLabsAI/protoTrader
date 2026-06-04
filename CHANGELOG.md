@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Slice 6 — gated paper execution.** A `broker` plugin adds paper-only order
+  placement behind the full safety stack so live trading can be layered on later
+  without re-plumbing the rails: a **mandate** (master switch + per-order, per-name,
+  gross-exposure and daily-order limits — **OFF by default**, refusing every order
+  until `broker_mandate.yaml` sets `enabled: true`), a filesystem **kill-switch**
+  (`touch config/TRADING_HALT` halts instantly), **per-order human approval** (the
+  task pauses as `input-required` until the operator types APPROVE), simulated fills
+  at a live quote with friction, and an append-only **audit ledger**. `mode: live`
+  is deliberately not implemented — this build cannot move real money. Tools:
+  `broker_account`, `broker_place_order`, `broker_orders`; a `place-a-paper-trade`
+  skill drives the confirm-armed → size → approve → fill loop. Offline tests cover
+  the gate, every limit, the fill math and persistence; live-verified OFF→ARMED and
+  the kill-switch.
 - **Slice 5 — behavioral / Shadow Account.** A `behavioral` plugin:
   `analyze_trade_journal` parses a journal CSV (tolerant of broker-export column
   names), FIFO-pairs fills into round-trips, and computes a behavioral profile +
