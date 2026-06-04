@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Forked from protoAgent as `protoTrader`** — a natural-language trading
+  *research* agent (Vibe-Trading reimagined on the protoAgent paradigm). Set
+  `identity.name = protoTrader`, persona (`SOUL.md`), and the scope/build plan
+  (`docs/dev/notes/prototrader-scope.md`). History-preserving fork; `upstream` =
+  protoAgent for fleet fix flow-down. Internal `protoagent` identifiers kept.
+
 ### Fixed
 - **Discord "Test connection" ignored the entered token** (always reported "bot
   token is empty", even for a valid token). The discord plugin route's request

@@ -1,16 +1,22 @@
-# protoAgent
+# protoTrader
 
-Template repository for building protoLabs A2A agents on LangGraph.
+**A natural-language trading *research* agent** — turn finance questions into
+runnable analysis: market research, strategy generation + backtesting, factor /
+alpha evaluation, and behavioral diagnostics. Research-primary; any order
+placement is gated (HITL approval, hard limits, paper-first).
 
-The purpose of this repo is to keep the boring parts — A2A spec
-handling, cost/extension emission, tracing, release pipeline —
-stable across every agent in the fleet, so forking an agent is
-close to a rewrite of `SOUL.md`, `graph/prompts.py`, and
-`tools/lg_tools.py` and not much else.
+protoTrader is **[Vibe-Trading](https://github.com/HKUDS/Vibe-Trading) reimagined
+on the [protoAgent](https://github.com/protoLabsAI/protoAgent) paradigm** — an A2A
+1.0 agent on LangGraph. The generic substrate (agent loop, context compaction,
+cross-session memory, skills, MCP, multi-agent subagents + declarative workflows,
+the React console, gated-execution primitives) is inherited from protoAgent; this
+repo adds the **finance domain layer** (data tools, backtest, alphas, finance
+skills/subagents/workflows). See [the scope doc](docs/dev/notes/prototrader-scope.md)
+for the Vibe-Trading → paradigm mapping and the build slices.
 
-**Canonical reference implementation**: [protoLabsAI/quinn](https://github.com/protoLabsAI/quinn).
-Quinn was the first agent built on this template — it's a good
-example of what a filled-in fork looks like end-to-end.
+> A fork of the protoAgent template (`upstream` remote = protoAgent) — fleet
+> fixes flow down via normal merges. The internal `protoagent` identifiers stay;
+> the agent's name is `identity.name` (default `protoTrader`).
 
 **Try it in 5 minutes:** clone, `pip install -r requirements.txt`,
 `python server.py`, open <http://localhost:7870>, and walk the

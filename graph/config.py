@@ -325,7 +325,7 @@ class LangGraphConfig:
     # the YAML value wins when both are set so per-fork customization
     # survives image rebuilds. ``operator`` is the human the agent thinks
     # it's talking to — injected into the system prompt when non-empty.
-    identity_name: str = "protoagent"
+    identity_name: str = "protoTrader"
     identity_operator: str = ""
 
     # Instance id for multi-instance data scoping (ADR 0004). When set, every

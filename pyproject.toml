@@ -1,7 +1,7 @@
 [project]
-name = "protoagent"
+name = "prototrader"
 version = "0.13.1"
-description = "protoAgent — LangGraph + A2A template for spawning protoLabs agents"
+description = "protoTrader — natural-language trading research agent (A2A 1.0 on LangGraph); Vibe-Trading reimagined on the protoAgent paradigm"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
