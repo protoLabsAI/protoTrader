@@ -46,7 +46,10 @@ _COLS = {
 
 
 def _pick(header: list[str]) -> dict:
-    low = {h.lower().strip(): h for h in header}
+    # Normalize spaces/hyphens → underscore so "Fill Price"/"Trade Date" match.
+    def _norm(h: str) -> str:
+        return h.lower().strip().replace(" ", "_").replace("-", "_")
+    low = {_norm(h): h for h in header}
     out = {}
     for key, names in _COLS.items():
         for n in names:
