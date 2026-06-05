@@ -93,7 +93,12 @@ FIELDS: list[Field] = [
     # ── Knowledge / memory ───────────────────────────────────────────────────
     Field("knowledge.top_k", "knowledge_top_k", "Knowledge recall top-k", "number", "Knowledge",
           minimum=1),
-    Field("knowledge.embed_model", "embed_model", "Embedding model", "string", "Knowledge"),
+    Field("knowledge.embeddings", "knowledge_embeddings", "Semantic recall (embeddings)", "bool", "Knowledge",
+          "Hybrid FTS5 + vector search via the embedding model (RRF-fused). Off = "
+          "keyword-only. Needs the gateway to serve the embedding model; falls back "
+          "to keyword search on outage.", restart=True),
+    Field("knowledge.embed_model", "embed_model", "Embedding model", "string", "Knowledge",
+          "Gateway alias used when semantic recall is on."),
     Field("skills.top_k", "skills_top_k", "Skill recall top-k", "number", "Knowledge", minimum=1),
     Field("checkpoint.db_path", "checkpoint_db_path", "Conversation history DB", "string", "Knowledge",
           "SQLite path for per-session chat history (survives restarts). Blank = in-memory.",
@@ -107,6 +112,9 @@ FIELDS: list[Field] = [
           restart=True),
     Field("checkpoint.harvest_enabled", "checkpoint_harvest_enabled", "History: harvest to knowledge", "bool",
           "Knowledge", "Summarize a session into the searchable knowledge base before pruning/deleting it."),
+    Field("knowledge.facts", "knowledge_facts", "Extract semantic facts", "bool", "Knowledge",
+          "On session retirement, also distil durable facts (aux model) and "
+          "consolidate them into the store. Rides the harvest pass."),
 
     # ── Middleware toggles ───────────────────────────────────────────────────
     Field("middleware.knowledge", "knowledge_middleware", "Knowledge middleware", "bool", "Middleware"),
@@ -161,8 +169,36 @@ def _plugin_group(sch, spec) -> str:
     return spec.get("group") or sch.section.replace("_", " ").title()
 
 
+# Settings categories (ADR 0020) — fold the flat sections into a small,
+# navigable taxonomy so the surface isn't one long scroll. Order here is the
+# order the console renders the category sub-nav. Unknown sections (notably
+# plugin-contributed ones, ADR 0019) default to "Integrations".
+_CATEGORY_ORDER = ["Agent", "Behavior", "Memory", "Integrations", "System"]
+_SECTION_CATEGORY = {
+    "Identity": "Agent",
+    "Model": "Agent",
+    "Routing": "Agent",
+    "Compaction": "Behavior",
+    "Caching": "Behavior",
+    "Goal mode": "Behavior",
+    "Tools": "Behavior",
+    "Knowledge": "Memory",
+    "Middleware": "System",
+    "Runtime": "System",
+    # Discord / Google / other plugin sections → "Integrations" (the default).
+}
+
+
+def _category_for(section: str) -> str:
+    return _SECTION_CATEGORY.get(section, "Integrations")
+
+
 def build_schema(config, *, model_options: list[str] | None = None) -> list[dict[str, Any]]:
     """Return the settings schema grouped by section, with current values.
+
+    Each group carries a ``category`` (ADR 0020) so the console can present a
+    category sub-nav instead of a flat scroll. Groups are ordered by category
+    (``_CATEGORY_ORDER``), then by their first appearance in ``FIELDS``.
 
     Secrets report ``value: ""`` plus ``is_set`` rather than echoing the secret.
     """
@@ -221,7 +257,19 @@ def build_schema(config, *, model_options: list[str] | None = None) -> list[dict
             entry["maximum"] = spec["maximum"]
         groups.setdefault(group, {"section": group, "fields": []})["fields"].append(entry)
 
-    return list(groups.values())
+    out = list(groups.values())
+    # Insertion order = first appearance in FIELDS (core), then plugins.
+    section_pos = {g["section"]: i for i, g in enumerate(out)}
+    for g in out:
+        g["category"] = _category_for(g["section"])
+
+    def _sort_key(g: dict) -> tuple[int, int]:
+        cat = g["category"]
+        cat_rank = _CATEGORY_ORDER.index(cat) if cat in _CATEGORY_ORDER else len(_CATEGORY_ORDER)
+        return (cat_rank, section_pos[g["section"]])
+
+    out.sort(key=_sort_key)
+    return out
 
 
 def validate_flat(updates: dict[str, Any]) -> tuple[bool, str | None]:
