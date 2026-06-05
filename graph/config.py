@@ -244,7 +244,16 @@ class LangGraphConfig:
     # ``~/.protoagent/knowledge/agent.db`` automatically when /sandbox
     # is read-only or absent (e.g. local ``python server.py``).
     knowledge_db_path: str = "/sandbox/knowledge/agent.db"
-    embed_model: str = "nomic-embed-text"
+    # The gateway's embedding model (NOT the chat model). Default is what the
+    # protoLabs gateway serves; forks on a different gateway set this to a model
+    # their gateway has (check GET /v1/models). A wrong/absent model degrades to
+    # keyword search via the store's circuit breaker — never KB-less.
+    embed_model: str = "qwen3-embedding"
+    # Semantic recall (ADR 0021): when True, the knowledge store is the
+    # HybridKnowledgeStore (FTS5 + vector embeddings via `embed_model`, fused
+    # with RRF). On by default — semantic recall finds paraphrases keyword search
+    # misses; the circuit breaker falls back to FTS5 on an embedding outage.
+    knowledge_embeddings: bool = True
     knowledge_top_k: int = 5
 
     # Conversation checkpointer — persists each chat session's history per
@@ -269,6 +278,10 @@ class LangGraphConfig:
     # knowledge base before dropping the raw checkpoints — so past conversations
     # stay searchable via memory_recall. Needs the knowledge store enabled.
     checkpoint_harvest_enabled: bool = True
+    # Semantic facts (ADR 0021): on retirement, also extract durable facts from
+    # the conversation (aux model) and consolidate them into the store as
+    # finding_type="fact". Rides the harvest pass; needs harvest enabled.
+    knowledge_facts: bool = True
 
     # Skills — human-authored ``SKILL.md`` folders (AgentSkills open standard)
     # loaded from disk into the FTS5 skill index and retrieved at inference by
@@ -488,9 +501,11 @@ class LangGraphConfig:
             checkpoint_max_age_days=data.get("checkpoint", {}).get("max_age_days", cls.checkpoint_max_age_days),
             checkpoint_prune_interval_hours=data.get("checkpoint", {}).get("prune_interval_hours", cls.checkpoint_prune_interval_hours),
             checkpoint_harvest_enabled=data.get("checkpoint", {}).get("harvest_enabled", cls.checkpoint_harvest_enabled),
+            knowledge_facts=data.get("knowledge", {}).get("facts", cls.knowledge_facts),
             workflows_enabled=data.get("workflows", {}).get("enabled", cls.workflows_enabled),
             workflow_dir=data.get("workflows", {}).get("dir", cls.workflow_dir),
             embed_model=knowledge.get("embed_model", cls.embed_model),
+            knowledge_embeddings=knowledge.get("embeddings", cls.knowledge_embeddings),
             knowledge_top_k=knowledge.get("top_k", cls.knowledge_top_k),
             skills_enabled=skills.get("enabled", cls.skills_enabled),
             skills_db_path=skills.get("db_path", cls.skills_db_path),

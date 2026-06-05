@@ -19,7 +19,7 @@ for the Vibe-Trading → paradigm mapping and the build slices.
 > the agent's name is `identity.name` (default `protoTrader`).
 
 **Try it in 5 minutes:** clone, `pip install -r requirements.txt`,
-`python server.py`, open <http://localhost:7870>, and walk the
+`python -m server`, open <http://localhost:7870>, and walk the
 setup wizard — no forking, no `sed`, no Docker required to get
 your first agent talking. See the [first-agent tutorial](./docs/tutorials/first-agent.md).
 
@@ -59,7 +59,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Run the server — no env vars required
-python server.py
+python -m server
 
 # 4. Open the wizard — pick your endpoint, pick a model, name the
 #    agent, pick a persona preset, hit Launch. The chat UI appears

@@ -1,9 +1,9 @@
 ---
 layout: home
 hero:
-  name: protoAgent
-  text: LangGraph + A2A template for protoLabs agents
-  tagline: Clone. Run. Walk the wizard. Chat. Fork when you're ready to ship.
+  name: protoTrader
+  text: Natural-language trading research agent
+  tagline: Market research, strategy backtesting, factor analysis, and gated paper execution — A2A 1.0 on LangGraph.
   actions:
     - theme: brand
       text: Spin up your first agent

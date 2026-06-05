@@ -72,6 +72,249 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `sys.modules` before exec, so a plugin can split across files (`from .tools
   import …`). Surfaced building `finance-data`; upstreamed to the protoAgent
   template.
+## [0.15.0] - 2026-06-05
+
+### Changed
+- **Internal: `_main()`'s inline route handlers moved into `operator_api/*`**
+  (ADR 0023, phase 3 — composition root down to app assembly). Each route group
+  is now a `register_*_routes(app)` function matching the existing
+  `register_operator_routes`, so the handler bodies (which only touch `STATE`)
+  are testable without booting the server:
+  `operator_api/telemetry_routes.py` (`/api/telemetry/*`),
+  `knowledge_routes.py` (`/api/knowledge/search` + `/api/playbooks`),
+  `config_routes.py` (`/api/config*` + `/api/settings*`), and
+  `chat_routes.py` (`/api/chat`, `/api/goal/*`, `/healthz`, OpenAI-compat
+  `/v1/*`). The 21 React-console handler closures also moved out — into
+  `operator_api/console_handlers.py` — finishing the half-done `operator_api/`
+  extraction. Net: **`server.py` went from 3,353 lines to a ~700-line `server/`
+  package composition root** (`_main` is ~430 lines of pure app assembly).
+  Phase 3 is complete; ADR 0023 is fully shipped.
+- **Internal: agent init / builders / reload / settings moved to
+  `server/agent_init.py`** (ADR 0023, phase 2 — final backend extraction).
+  `_init_langgraph_agent`, the ten `_build_*` component builders
+  (knowledge / skills / MCP / plugins / checkpointer / inbox / activity /
+  telemetry / workflow / scheduler), the checkpoint-prune + thread-retire loops,
+  plugin-host wiring, `_reload_langgraph_agent`, and the operator-console
+  settings callbacks (27 functions) now live in their own module.
+  `server/__init__.py` re-exports every name and drops ~1,135 lines — the
+  composition root is now ~1,355 lines (was 3,353 before phase 1). Pure move
+  (1000 tests + a live smoke green: boot exercising every builder, a chat turn,
+  and a config-driven hot reload).
+- **Internal: the chat backend moved to `server/chat.py`** (ADR 0023, phase 2).
+  The LangGraph turn loop — `chat` (Gradio + OpenAI-compat), the streaming
+  `_chat_langgraph_stream` (A2A handler), the shared `_run_turn_stream` event
+  loop, tool-preview/interrupt shaping, and slash-command parsing/execution —
+  now lives in its own module. It imports only neutral modules (no `server`
+  symbols), so there's no import cycle; `server/__init__.py` re-exports every
+  name. Pure move (1000 tests + a live smoke green: non-streaming + streaming
+  turns). `server/__init__.py` drops ~645 lines.
+- **Internal: the A2A surface moved to `server/a2a.py`** (ADR 0023, phase 2).
+  Agent-card building, skill declarations (`_SKILL_SPECS` + `_agent_skills` +
+  `structured_skill_schema`), the per-turn telemetry writer, and the executor
+  terminal hook now live in their own module; `server/__init__.py` re-exports
+  every name so `server.<symbol>` is unchanged. Pure move (1000 tests + a live
+  A2A 1.0 round-trip green). Fork-relevant only if you *monkeypatch*
+  `server._SKILL_SPECS` at runtime — patch `server.a2a._SKILL_SPECS` instead
+  (editing the source list works as before).
+- **`server.py` is now a `server/` package** (ADR 0023, phase 2 prep). The
+  monolith moved to `server/__init__.py` (the composition root) with a
+  `server/__main__.py` entry, so the backends can be extracted into
+  `server/a2a.py`, `server/chat.py`, `server/agent_init.py` next. **Launch it as
+  a module: `python -m server`** (was `python server.py`) — the container
+  entrypoint, eval sweep, and desktop-sidecar build were updated to match.
+  Pure move + the `__file__`→`_bundle_root()` path-anchor fix (the package adds
+  one directory level); `import server` / `from server import X` are unchanged
+  (1000 tests + a full live smoke green: boot, chat turn, A2A 1.0 round-trip).
+- **Internal: `server.py`'s 26 ambient module-globals → an `AppState` container**
+  (ADR 0023, phase 1). Runtime state (graph, stores, registries, scheduler,
+  MCP/plugin state) now lives in `runtime/state.py` as a named, injectable
+  singleton (`STATE`) instead of bare module globals — the foundation for
+  splitting the 3,353-line monolith into focused modules. Zero functional change
+  (1000 tests + a full live smoke green); fork-relevant if you patched
+  `server._<global>` (now `server.STATE.<field>`).
+
+### Changed
+- **Semantic recall is on by default.** `knowledge.embeddings` now defaults to
+  `true` and `embed_model` to `qwen3-embedding` (what the protoLabs gateway
+  serves). The store fuses FTS5 + vector search so it finds paraphrases keyword
+  search misses; the circuit breaker degrades to keyword-only if the gateway
+  can't embed, so it's safe for forks (set `embed_model` to your gateway's, or
+  `knowledge.embeddings: false`).
+
+## [0.14.0] - 2026-06-05
+
+### Fixed
+- **Semantic-recall embeddings were non-functional against a real gateway**
+  (found by a full knowledge-store smoke test). `create_embed_fn` built
+  `OpenAIEmbeddings` with its default client-side tiktoken tokenization, which
+  posts `input` as int arrays — a LiteLLM/vLLM gateway rejects that with a 422
+  ("input should be a valid string"). Now passes `check_embedding_ctx_length=
+  False` so the raw string is sent. Also: the default `embed_model`
+  (`nomic-embed-text`) isn't what every gateway serves (the protoLabs gateway
+  serves `qwen3-embedding`) — documented that `embed_model` is gateway-specific.
+  Verified live: hybrid search now returns a fact via a paraphrased query that
+  keyword search misses.
+
+### Added
+- **Docs: "Memory & the knowledge store"** (`docs/explanation/`) — the store, the
+  three memory types (semantic facts / episodic summaries / procedural
+  playbooks), write paths + the reasoning guardrail, retrieval, and how to turn
+  on semantic recall (with the gateway-model caveat).
+- **Activity is a provenance feed, not a second chat** (ADR 0022). Every
+  reactive turn is tagged with *what triggered it* (scheduled job / webhook /
+  inbox source / sister-agent / your reply) — the backend tracked this `origin`
+  on the A2A metadata but dropped it before the UI, so Activity just showed
+  `agent: <text>`. Now `origin`/`trigger`/`priority` ride `TurnOutcome`, land in
+  a small `activity` log, and the console renders a timeline where each entry
+  shows its trigger badge + time + priority, openable to continue. Answers "why
+  did the agent just do that?" at a glance.
+
+### Fixed
+- **Inbox `now`-fire was silently broken since the A2A 1.0 migration.** The
+  inbox→Activity fire self-POSTed with the retired 0.3 wire shape (`message/send`,
+  `role: "user"`, params-level `contextId`, no `A2A-Version` header), which
+  a2a-sdk 1.1 rejects with `-32601`/`-32602` — and the fire reported success
+  because a JSON-RPC error rides an HTTP 200. So `now`-priority inbox items never
+  reached the agent. Migrated to the 1.0 shape (matching the scheduler's fire)
+  and the success check now inspects the JSON-RPC error. Found by the Activity
+  audit; verified live (a `now` item now fires and lands in the feed).
+
+### Added
+- **`fact_recall` eval** — locks the new semantic-fact bucket: a `domain="fact"`
+  chunk (what the harvest extractor produces) is passively recalled by the
+  KnowledgeMiddleware and surfaced in the answer. Tracked alongside the existing
+  recall cases (ADR 0012). The hybrid-vs-keyword recall comparison runs via
+  `evals.sweep` with `knowledge.embeddings` on (once the gateway serves an
+  embedding model).
+
+### Fixed
+- **`<prior_sessions>` can no longer leak reasoning; one loader, not two** (ADR
+  0021). The persisted session files (injected each turn as `<prior_sessions>`
+  for cross-session recency) stored raw assistant content — so the model's
+  `<scratch_pad>` could ride into later prompts. Now stripped at the write
+  source *and* at read (defensive for files written by older builds). The two
+  copy-pasted loaders in `MemoryMiddleware` and `KnowledgeMiddleware` are
+  collapsed into a single `load_prior_sessions` (the duplication the code itself
+  lamented). `<prior_sessions>` is kept — it's the only *immediate* cross-session
+  recency the checkpointer/harvest don't provide.
+
+### Added
+- **Semantic fact extraction — the memory upgrade** (ADR 0021). The session-end
+  pass (`conversation_harvest`) now does both halves: the episodic summary *and*
+  a semantic pass that distils **durable facts** (aux model — user preferences,
+  decisions, stable facts about their projects), consolidates them (skips
+  near-duplicates already in the store), and persists them as `domain="fact"`.
+  Importance-gated in the prompt — a chatty turn with nothing durable yields
+  nothing. Replaces the removed raw per-turn dump with *extract, don't dump;
+  background, not hot-path*. Gated by `knowledge.facts` (default on; rides the
+  harvest). New `graph/memory_facts.py`.
+- **Knowledge chunks carry a `namespace` dimension.** Facts (and any chunk) can
+  be scoped to a per-project/owner namespace, so multi-project scoping (ADR 0007)
+  is a later *filter*, not a schema migration. Additive nullable column with an
+  online migration for existing DBs; `add_chunk`/`add_finding`/`list_chunks` take
+  `namespace`, plus a precise `delete_by_id` (backs fact consolidation).
+- **Semantic recall: the dormant embeddings layer is now wired** (ADR 0021). The
+  `HybridKnowledgeStore` (FTS5 + vector search, RRF-fused, with an embedding
+  circuit breaker) and the `embed_model` config existed but were connected to
+  nothing — knowledge recall was keyword-only. A new `knowledge.embeddings` flag
+  (default **off**) flips `_build_knowledge_store` to the hybrid store with an
+  `embed_fn` wired to the gateway (`graph.llm.create_embed_fn`, same OpenAI-compat
+  endpoint + WAF-safe UA as the chat model). Off → keyword-only (unchanged); on →
+  hybrid semantic + keyword. Any failure degrades to FTS5, never KB-less, and the
+  breaker handles runtime embedding outages. Exposed in Settings → Memory.
+
+### Fixed
+- **Knowledge store no longer fills with raw reasoning** (ADR 0021). The memory
+  middleware dumped *every* assistant turn into the knowledge base — raw,
+  truncated at 2000 chars, with the model's internal `<scratch_pad>` reasoning
+  intact — which the retrieval layer then recycled into later prompts. That
+  per-turn dump is removed (conversation knowledge is captured by the summarized,
+  scratch_pad-stripped `conversation_harvest` on thread retirement instead). A
+  guardrail at the store's single write chokepoint (`KnowledgeStore.add_chunk`)
+  now strips `<scratch_pad>`/`<think>` from *every* writer defensively — internal
+  reasoning can never reach the store again. Regression tests added.
+- **Settings is its own rail surface; category sub-nav no longer overlaps the
+  fields.** The category sub-nav (added with the Settings regroup) landed in the
+  `.stage-panel` grid's `1fr` content row, so it stretched over the fields. Gave
+  the Settings panel its own `auto auto 1fr` grid (header · sub-nav · scrolling
+  body) and promoted **Settings out of System into a top-level rail item** (its
+  own view), so it no longer competes with System's sub-nav. System is now
+  Runtime · Telemetry.
+
+### Added
+- **Knowledge surface = searchable Store + Playbooks** (ADR 0020). The Knowledge
+  rail was mislabeled — it showed only Playbooks while the actual knowledge base
+  (the `knowledge/store.py` FTS5 chunks: findings, daily-log, harvested sessions,
+  operator notes that feed `<learned_skills>`) was unbrowsable. Knowledge now has
+  two sub-tabs: **Store** (a searchable view, default) and **Playbooks**. New
+  read-only `GET /api/knowledge/search?q=…` endpoint (empty `q` → most-recent
+  chunks; non-empty → FTS5 search) backs the Store view. Also a debugging window
+  into "why did it recall that?".
+- **Subagents are runnable as chat slash commands** (ADR 0020). A message like
+  `/researcher find the latest on X` runs the named subagent and returns its
+  output — the composer analogue of the `task` tool, so "run a worker" is a
+  gesture, not a separate surface. Every registered subagent (built-in + plugin)
+  is offered in the `/` autocomplete alongside `/goal` and the workflow
+  commands. A workflow of the same name wins; a bare `/<subagent>` shows a usage
+  hint; an unknown `/name` falls through to a normal turn. First step toward
+  collapsing Studio to Workflows-only (the Run tab becomes redundant).
+
+### Changed
+- **Settings regrouped into 5 categories** (ADR 0020). The Settings surface was a
+  flat ~12-section scroll mixing model config, cache TTLs, middleware toggles, and
+  plugin integrations. Sections now fold into a category sub-nav — **Agent**
+  (Identity · Model · Routing), **Behavior** (Compaction · Caching · Goal mode ·
+  Tools), **Memory** (Knowledge), **Integrations** (Discord · Google · plugins),
+  **System** (Middleware · Runtime). The schema (`build_schema`) tags each group
+  with a `category` and orders them; plugin-contributed sections default to
+  Integrations. Pure reorganization — no field added or removed.
+- **Studio is now Workflows-only; the Run tab is gone** (ADR 0020). The Studio →
+  Run panel was a forms-based way to launch a subagent manually — redundant now
+  that subagents (and workflows) run as chat slash commands. Studio's rail lands
+  directly on Workflows (authoring/inspection); to *run* a worker, type
+  `/<subagent>` in chat. Removes `RunPanel` + the Studio sub-nav.
+- **Console loading screen: better-styled logo (matches ORBIS).** The launch
+  brand splash (`IntroSplash`) and cold-start `BootGate` rendered the bot mark
+  as a static `<img>` in the brand-default violet `#7c3aed` — muddy on the dark
+  background. Ported ORBIS's inline `ProtoLabsIcon` component (variants
+  `flat`/`outline`/`white`, plus a `decorative` a11y prop) and switched both
+  screens to the `outline` variant in the lavender chrome accent `#9b87f2`, so
+  the mark is a crisp inline SVG that pops against the chrome. Wordmark + glow
+  unchanged. (Topbar `brand-mark` + favicon still use the static asset — a
+  follow-up if we want full consistency.)
+
+## [0.13.2] - 2026-06-04
+
+### Fixed
+- **Eval `ask()` capped every turn at 30s — slow cases ReadTimeout'd.** A2A 1.0's
+  non-streaming `SendMessage` *blocks* until the task is terminal (the 0.3
+  `message/send` returned immediately and the client polled), but `ask()` still
+  built its httpx client with a fixed `timeout=30` — so any turn longer than 30s
+  (`web_search`, subagent delegation) raised `ReadTimeout` even when the case
+  budgeted 90–300s. The POST now uses the call's `timeout_s`, and a client-side
+  timeout returns a clean `state="timeout"` instead of a raw exception. Verified
+  live: `research_delegation` now passes at ~92s (was a 30s timeout). Regression
+  test pins the constructed timeout.
+- **Eval harness spoke the retired A2A 0.3 wire shape — every case failed.** The
+  A2A 1.0 migration (ADR 0014) moved the server to `a2a-sdk` (≥1.1), which serves
+  proto method names (`SendMessage`/`GetTask`/`SendStreamingMessage`/`CancelTask`),
+  requires an `A2A-Version: 1.0` request header (a missing header is read as 0.3,
+  so the 1.0 methods 404 with `-32601`), and emits untyped parts (`{"text": …}`,
+  no `kind`) with `TASK_STATE_*` states. `evals/client.py` + `evals/runner.py`
+  were left on the 0.3 shape (`message/send`, `role: "user"`, `{"kind": "text"}`,
+  no version header), so `python -m evals.runner` failed *every* case with
+  "method not found". Migrated the eval client/runner to the 1.0 wire shape
+  (header + proto method names + `ROLE_USER` + untyped parts + `TASK_STATE_*`
+  normalization + the streaming `statusUpdate`/`artifactUpdate` oneof frames +
+  `contextId` moved inside the message, where 1.0's `SendMessageRequest` expects
+  it — at params level it's a `-32602`, which would have broken goal-mode cases).
+  Regression test (`tests/test_eval_client_a2a_1_0.py`) drives the real client
+  against an in-process `a2a-sdk` app and pins that the legacy shape is rejected.
+- **Plugins: multi-module support.** The plugin loader now imports a plugin's
+  `__init__.py` as a package — registered in `sys.modules` before exec with a
+  sanitized module name — so a plugin can have sibling modules and use relative
+  imports (`from .tools import …`). Previously a hyphenated plugin id produced an
+  illegal module name and the relative import failed at load. Regression test added.
 - **Discord "Test connection" ignored the entered token** (always reported "bot
   token is empty", even for a valid token). The discord plugin route's request
   model was a *function-local* Pydantic class, but the plugin module uses
