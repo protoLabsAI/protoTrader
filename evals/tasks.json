@@ -396,5 +396,35 @@
       ],
       "threshold": 0.75
     }
+  },
+  {
+    "id": "fin_stock_price_history",
+    "category": "finance",
+    "kind": "ask",
+    "name": "Asks how a stock has traded over time → stock_price_history",
+    "prompt": "How has Microsoft traded over the past six months? Give me the trend.",
+    "expected_tools": ["stock_price_history"],
+    "expected_patterns": [],
+    "timeout_s": 120
+  },
+  {
+    "id": "fin_crypto_price_history",
+    "category": "finance",
+    "kind": "ask",
+    "name": "Asks for recent crypto candles → crypto_price_history (ccxt)",
+    "prompt": "Show me Ethereum's daily price action over the last couple of weeks.",
+    "expected_tools": ["crypto_price_history"],
+    "expected_patterns": [],
+    "timeout_s": 120
+  },
+  {
+    "id": "fin_crypto_backtest",
+    "category": "finance",
+    "kind": "ask",
+    "name": "Backtest on a crypto pair → backtest_strategy over the ccxt data path",
+    "prompt": "Backtest a breakout strategy on Bitcoin (BTC/USDT) over the last year and tell me if it beat just holding.",
+    "expected_tools": ["backtest_strategy"],
+    "expected_patterns": ["sharpe"],
+    "timeout_s": 180
   }
 ]
