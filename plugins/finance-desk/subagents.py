@@ -76,6 +76,12 @@ the result honestly: did it **beat buy-and-hold**? Is the **out-of-sample** Shar
 close to in-sample (else it's overfit)? Does the **bootstrap Sharpe CI** clear 0,
 or does it straddle it? How many trades (< ~30 → tentative)?
 
+**Stay on brief.** Backtest the instrument(s) named in your task — do not sweep a
+sector's peers, and don't run every strategy as a survey. One matching strategy
+(plus a quick robustness variation if the result looks promising) is the job; a
+broad name × strategy grid burns the desk's time budget and answers a question
+nobody asked.
+
 For a result worth acting on, check robustness: vary the parameters a little, try
 a second period/instrument — a single lucky setting is curve-fitting.
 

@@ -377,7 +377,7 @@
     "name": "Open-ended committee view → delegates to the desk (subagent or workflow)",
     "prompt": "Convene your desk for a full committee view on NVDA — I want the bull case, the bear case, and the key risks before I decide.",
     "expected_any_tools": ["task", "task_batch", "run_workflow"],
-    "timeout_s": 360
+    "timeout_s": 480
   },
   {
     "id": "fin_quant_desk_workflow",

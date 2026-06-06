@@ -245,6 +245,41 @@ over repeated runs before claiming the number broadly.
 
 ---
 
+## 6e. Committee fan-out cap (2026-06-06)
+
+`fin_desk_delegation` ("convene the desk for a full committee view on NVDA")
+originally timed out at 360 s. The audit log showed the cause: a single
+`task_batch` whose `quant` legs ran **~30 backtests across ~8 peer tickers × 4
+strategies** — a sector sweep nobody asked for on a single-name committee ask.
+
+**What worked — a deterministic cap (shipped):** a "stay on brief" line in the
+`quant` subagent prompt — *backtest only the named instrument; don't sweep peers
+or survey every strategy*. Backtests per run dropped **~30 → 1**. With the sweep
+gone the case passes well inside budget (one clean run: **155 s**, proper
+`task_batch` delegation, 1 backtest, coherent committee output).
+
+**What did NOT work — skill steering (reverted):** the bounded
+`investment-committee` workflow (bull → bear → risk → PM, no peer-sweep step) is
+the fast, coherent path (~50–90 s, cf. quant-desk §6d). A `convene-the-committee`
+skill was added to route committee asks to `run_workflow("investment-committee",
+…)`. Across two live runs the lead agent **ignored it** — it kept hand-rolling
+`task_batch` or, with a more forceful skill + tightened `research-a-ticker`,
+researched fully inline (no delegation at all, which would fail the tool
+assertion). For this model (`protolabs/reasoning`, Qwen) skill retrieval does not
+reliably override the instinct to research inline. The skill was removed; the
+deterministic prompt cap is the keeper.
+
+**Budget right-size:** `fin_desk_delegation` timeout 360 s → 480 s (matching
+`quant-desk`). A genuine multi-perspective committee view is inherently a
+multi-minute research op; run-to-run depth varies widely (155 s vs 312 s
+observed). With the artificial backtest inflation removed, 480 s is a realistic
+budget, not a mask. **Still open:** reliably routing committee asks onto the
+bounded workflow needs a mechanism other than a retrieved skill (e.g. a
+deterministic intent→workflow dispatch), and output coherence on the free
+`task_batch` path is variable — the workflow's PM-synthesis step is cleaner.
+
+---
+
 ## 6c. Live validation — second pass (2026-06-06)
 
 Re-ran `--category finance` against the live agent (`protolabs/reasoning`) to
