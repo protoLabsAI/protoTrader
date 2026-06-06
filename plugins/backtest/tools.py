@@ -27,8 +27,8 @@ def _report(r: dict) -> str:
         f"{r['start']} → {r['end']} ({r['interval']}, {f['bars']} bars; "
         f"costs {r['cost_bps']}+{r['slippage_bps']}bps)",
         "",
-        f"| metric | strategy | buy & hold |",
-        f"|---|---|---|",
+        "| metric | strategy | buy & hold |",
+        "|---|---|---|",
         f"| total return | {_pct(f['total_return'])} | {_pct(f['bh_total_return'])} |",
         f"| CAGR | {_pct(f['cagr'])} | — |",
         f"| Sharpe | {f['sharpe']:.2f} | — |",

@@ -224,6 +224,7 @@ from server.a2a import (  # noqa: E402,F401 — re-export of the extracted A2A s
     _agent_skills,
     _bearer_configured,
     _build_agent_card_proto,
+    assert_routable_card_url,
     _package_version,
     _record_a2a_telemetry,
     structured_skill_schema,
@@ -615,6 +616,10 @@ def _main():
     )
 
     a2a_card = _build_agent_card_proto()
+    # Deploy-time guard (opt-in): refuse to start if the card would advertise a
+    # loopback URL — a deployed agent that does so is silently unreachable to
+    # remote consumers. No-op unless a2a.require_routable_url is set.
+    assert_routable_card_url()
 
     # Durable SQLite-backed task + push-config stores (survive restart; 24h TTL
     # sweep on tasks). The push-config store rejects SSRF callback URLs at
@@ -687,6 +692,16 @@ def _main():
                     str(sw_path), media_type="application/javascript",
                     headers={"Service-Worker-Allowed": "/"},
                 )
+
+        # Root favicon so a bare browser request (the agent's base URL, not just
+        # /app) shows the brand mark instead of a 404. Both /favicon.svg and the
+        # legacy /favicon.ico path resolve to the SVG mark.
+        favicon_path = static_dir / "favicon.svg"
+        if favicon_path.exists():
+            @fastapi_app.get("/favicon.svg", include_in_schema=False)
+            @fastapi_app.get("/favicon.ico", include_in_schema=False)
+            async def _serve_favicon() -> FileResponse:
+                return FileResponse(str(favicon_path), media_type="image/svg+xml")
 
         fastapi_app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
