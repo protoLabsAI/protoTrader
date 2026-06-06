@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-06-06
+
 ### Changed
 - **Synced upstream protoAgent → v0.18.0 (30 commits; squash-land).** Brings the
   fleet batch since the last sync: the **unified delegate registry** —
