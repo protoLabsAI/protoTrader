@@ -70,3 +70,30 @@ def test_missing_columns_raises():
     import pytest
     with pytest.raises(ValueError):
         e.parse_fills("foo,bar\n1,2\n")
+
+
+def test_no_loss_profit_factor_is_json_safe():
+    """All-winners journal → profit_factor must be JSON-safe (None), never inf."""
+    import json
+    e = _engine()
+    p = e.profile(
+        "date,symbol,side,qty,price\n"
+        "2026-01-02,AAPL,buy,10,100\n"
+        "2026-01-03,AAPL,sell,10,110\n"
+    )
+    assert p["profit_factor"] is None  # was float("inf") — breaks strict JSON
+    json.dumps(p, allow_nan=False)     # would raise on inf/nan
+
+
+def test_unsorted_fills_are_sorted_before_pairing():
+    """Rows out of chronological order (sell before its buy) must still pair as a
+    long round-trip with a non-negative hold time (M4)."""
+    e = _engine()
+    p = e.profile(
+        "date,symbol,side,qty,price\n"
+        "2026-03-01,AAPL,sell,10,120\n"   # appears first in file order
+        "2026-01-01,AAPL,buy,10,100\n"
+    )
+    assert p["trades"] == 1
+    assert p["total_pnl"] == 200.0                     # long +$20/sh, not a short
+    assert p["avg_win_hold_days"] == 59                # Jan 1 → Mar 1, never negative

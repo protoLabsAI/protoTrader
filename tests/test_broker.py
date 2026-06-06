@@ -110,3 +110,42 @@ def test_state_persists(tmp_path, monkeypatch):
     assert b2.state.positions["AAPL"]["qty"] == 10
     # Audit ledger was written.
     assert (tmp_path / "broker_audit.jsonl").exists()
+
+
+def test_validate_marks_held_positions_at_market(tmp_path, monkeypatch):
+    """Exposure caps must value the existing book at market, not stale cost (M3).
+    A position that has rallied past cost can push gross over the cap — the
+    cost-basis valuation under-measures it and would wrongly approve."""
+    m = _engine(tmp_path, monkeypatch)
+    b = m.PaperBroker(_armed(m, max_gross_exposure_pct=60.0))
+    b.state.cash = 50_000.0
+    b.state.positions["AAA"] = {"qty": 1000.0, "avg_price": 50.0}  # $50k cost, now $200/sh
+    ok_cost, _ = b.validate("BBB", "buy", 1, 100.0)                 # AAA at cost → ~50% → under cap
+    ok_mark, why = b.validate("BBB", "buy", 1, 100.0, mark={"AAA": 200.0})  # at market → ~80%
+    assert ok_cost is True
+    assert ok_mark is False and "gross" in why
+
+
+def test_state_save_is_atomic(tmp_path, monkeypatch):
+    """Fill persists via a temp file + os.replace — valid JSON, no lingering .tmp,
+    and the state reloads (L2)."""
+    import json as _json
+    m = _engine(tmp_path, monkeypatch)
+    b = m.PaperBroker(_armed(m))
+    b.fill("AAPL", "buy", 10, 180.0, "market")
+    p = m._state_path()
+    _json.loads(p.read_text())                                  # not truncated
+    assert not p.with_suffix(p.suffix + ".tmp").exists()        # temp cleaned up
+    assert m.PaperBroker(_armed(m)).state.positions["AAPL"]["qty"] == 10
+
+
+def test_buy_near_full_cash_stays_nonnegative(tmp_path, monkeypatch):
+    """A validated buy near the cash limit never overdraws (L1 — cost estimate
+    matches the fill's compounded slippage+commission)."""
+    m = _engine(tmp_path, monkeypatch)
+    b = m.PaperBroker(_armed(m, max_order_usd=1e12))
+    b.state.cash = 18_100.0
+    ok, _ = b.validate("AAPL", "buy", 100, 180.0)
+    assert ok
+    b.fill("AAPL", "buy", 100, 180.0, "market")
+    assert b.state.cash >= 0.0
