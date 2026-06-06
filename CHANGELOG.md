@@ -12,7 +12,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **Synced upstream protoAgent (post-0.15.2) — security & deploy hardening.** A
+- **Synced upstream protoAgent → v0.18.0 (30 commits; squash-land).** Brings the
+  fleet batch since the last sync: the **unified delegate registry** —
+  `delegate_to` over a2a/openai/acp with a CRUD/Test REST API, a console
+  management panel, secret routing, and a background health prober (ADR 0025,
+  #602–#608); **`code_with`** spawning CLI coding agents over ACP with a by-kind
+  permission policy + per-call consent gate (ADR 0024, #596–#600); **bearer-gated
+  operator/console + OpenAI-compat APIs** (#591) and a loopback card-URL deploy
+  guard (#598); **token-by-token answer streaming** in the console + A2A (#616)
+  with chat self-heal across navigation (#613–#615); audit-log rotation +
+  broadened redaction (#588); WAL + busy_timeout on the telemetry/activity/inbox/
+  beads stores (#589); A2A turn-outcome metrics (#592); and a **ruff lint gate** +
+  A2A live-smoke CI job (#586–#587). Fork identity (README, `pyproject`
+  name/version, image names, `identity_name`) and the finance domain layer
+  preserved; `pyproject` adopts upstream's `[tool.ruff]` config so the new gate
+  passes.
+- **The desk's `market-analyst` now runs on `protolabs/fast`.** The descriptive
+  setup/frame step (fetch, summarize, cite) no longer pays the reasoning model's
+  latency; `quant` and `risk-manager` stay on the main model. The `quant-desk`
+  workflow drops from ~91–100 s to ~50 s (~45%) with the analysis quality intact.
+- **Committee backtest fan-out capped.** A "stay on brief" rule keeps the `quant`
+  subagent from sweeping a sector's peers × every strategy on a single-name ask —
+  the open committee view was running ~30 backtests and timing out; now ~1.
   real merge (not squash) of upstream `main`, which also repairs the merge base
   so future syncs only surface genuinely-new commits. Brings the security/deploy
   batch v0.15.2 didn't include: a **default-on SSRF denylist for `fetch_url`**
@@ -31,6 +52,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `git config merge.ours.driver true` per clone (documented in `.gitattributes`).
 
 ### Fixed
+- **Desk workflows actually backtest again via the REST/console path** (upstream
+  #612, ours — now native via the sync). The out-of-graph workflow/subagent
+  runners (`run_manual_workflow` / `run_manual_subagent`, behind the console *Run
+  workflow* button and the eval harness's `kind: workflow` cases) rebuilt their
+  tool set from a bare `get_all_tools()` that omitted plugin + MCP tools, so a
+  `quant` step calling `backtest_strategy` silently degraded to "not a valid
+  tool" and the workflow produced no real numbers. The runners now receive the
+  plugin + MCP tools, mirroring the lead graph.
 - **Changelog: de-duplicated the upstream `[0.14.0]` section** the earlier
   `merge=union` syncs had spliced in (its entries already live under `[0.15.0]`).
 
