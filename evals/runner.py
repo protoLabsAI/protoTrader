@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 import time
 from dataclasses import asdict, dataclass, field
@@ -58,6 +59,19 @@ class CaseResult:
     duration_ms: int = 0
     tokens: int = 0
     raw: dict = field(default_factory=dict)
+    skipped: bool = False
+
+
+def _requirements_unmet(case: dict) -> str | None:
+    """A reason to skip the case, or None to run it. A case declares
+    ``requires_env: [VAR, …]`` for prerequisites that aren't always present —
+    e.g. an optional integration the operator opts into. Skipped (not failed)
+    when any is unset, so a case needing a live coding agent doesn't break the
+    default board."""
+    for var in case.get("requires_env") or []:
+        if not os.environ.get(var):
+            return f"requires_env {var}"
+    return None
 
 
 # ── case runners ────────────────────────────────────────────────────────────
@@ -399,7 +413,11 @@ async def _run_workflow_case(client: AgentClient, case: dict) -> CaseResult:
     and assert on its synthesized output (patterns + optional rubric).
 
     Case schema: ``workflow`` (recipe name), ``inputs`` (dict),
-    ``expected_patterns`` / ``verify_rubric`` against the workflow output."""
+    ``expected_patterns`` / ``verify_rubric`` against the workflow output, and
+    ``expected_tools`` / ``expected_any_tools`` against the audit log (so a case
+    can assert the recipe's steps actually CALLED a tool, not just that the
+    synthesized text reads well — e.g. a quant step that backtests vs one that
+    only describes a backtest)."""
     cid, cat, name = case["id"], case.get("category", "workflow"), case.get("name", case["id"])
     wf = case.get("workflow")
     if not wf:
@@ -407,6 +425,7 @@ async def _run_workflow_case(client: AgentClient, case: dict) -> CaseResult:
     import time as _time
 
     start = _time.time()
+    since = verify.audit_now()  # mark before the run so we see tools the steps fire
     try:
         out = await client.run_workflow(
             wf, case.get("inputs") or {}, timeout_s=case.get("timeout_s", 300),
@@ -425,6 +444,35 @@ async def _run_workflow_case(client: AgentClient, case: dict) -> CaseResult:
         if pattern.lower() not in text_lower:
             problems.append(f"missing pattern {pattern!r}")
     problems += _check_rubric(case, text)
+
+    # Tool-firing assertions over the audit log — same shape as the ask path, so
+    # a workflow case can require its steps to have actually invoked a tool. A
+    # subagent that writes/describes code instead of calling the tool produces a
+    # plausible-reading output but fires nothing; this catches that.
+    expected_tools = case.get("expected_tools")
+    if expected_tools is not None:
+        require_success = case.get("tool_outcome", "success") == "success"
+        _entries, passed_t, detail_t = await _await_audit_assertion(
+            since, expected_tools, require_success=require_success,
+        )
+        if not passed_t:
+            problems.append(detail_t)
+
+    any_tools = case.get("expected_any_tools")
+    if any_tools:
+        require_success = case.get("tool_outcome", "success") == "success"
+        deadline = asyncio.get_running_loop().time() + _AUDIT_POLL_DEADLINE_S
+        passed_any, detail_a = False, ""
+        while True:
+            entries = verify.audit_entries_since(since)
+            passed_any, detail_a = verify.assert_any_tool_fired(
+                entries, any_tools, require_success=require_success,
+            )
+            if passed_any or asyncio.get_running_loop().time() >= deadline:
+                break
+            await asyncio.sleep(_AUDIT_POLL_INTERVAL_S)
+        if not passed_any:
+            problems.append(detail_a)
 
     detail = "; ".join(problems) if problems else f"OK ({duration_ms}ms, {len(text)} chars)"
     return CaseResult(
@@ -473,8 +521,8 @@ def _print_board(results: list[CaseResult]) -> None:
     print("-" * 90)
     pass_count = 0
     for r in results:
-        mark = "PASS" if r.passed else "FAIL"
-        if r.passed:
+        mark = "SKIP" if r.skipped else ("PASS" if r.passed else "FAIL")
+        if r.passed and not r.skipped:
             pass_count += 1
         time_s = f"{r.duration_ms}ms".rjust(6)
         tokens = str(r.tokens).rjust(6) if r.tokens else "  -   "
@@ -483,7 +531,9 @@ def _print_board(results: list[CaseResult]) -> None:
             f"{mark}    {time_s}  {tokens}  {r.detail[:80]}"
         )
     print("-" * 90)
-    print(f"\n{pass_count}/{len(results)} passed")
+    skip_count = sum(1 for r in results if r.skipped)
+    ran = len(results) - skip_count
+    print(f"\n{pass_count}/{ran} passed" + (f" ({skip_count} skipped)" if skip_count else ""))
 
 
 def _save_report(results: list[CaseResult], path: Path, *, model: str = "", base_url: str = "") -> None:
@@ -496,7 +546,8 @@ def _save_report(results: list[CaseResult], path: Path, *, model: str = "", base
         "model": model,
         "base_url": base_url,
         "total": len(results),
-        "passed": sum(1 for r in results if r.passed),
+        "passed": sum(1 for r in results if r.passed and not r.skipped),
+        "skipped": sum(1 for r in results if r.skipped),
         "results": [asdict(r) for r in results],
     }
     path.write_text(json.dumps(payload, indent=2))
@@ -544,8 +595,16 @@ async def main():
     for case in cases:
         sys.stdout.write(f"  {case['id']}... ")
         sys.stdout.flush()
-        result = await run_one(client, case)
-        sys.stdout.write(f"{'PASS' if result.passed else 'FAIL'}  {result.detail[:60]}\n")
+        skip = _requirements_unmet(case)
+        if skip:
+            result = CaseResult(
+                case["id"], case.get("category", "?"), case.get("name", "?"),
+                passed=True, detail=f"skipped: {skip}", skipped=True,
+            )
+        else:
+            result = await run_one(client, case)
+        mark = "SKIP" if result.skipped else ("PASS" if result.passed else "FAIL")
+        sys.stdout.write(f"{mark}  {result.detail[:60]}\n")
         results.append(result)
 
     _print_board(results)

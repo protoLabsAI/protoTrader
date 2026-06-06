@@ -38,8 +38,8 @@ async def analyze_trade_journal(csv_text: str) -> str:
                 f"**Trade journal — {p['trades']} round-trips** "
                 f"({p['date_range'][0][:10]} → {p['date_range'][1][:10]}; {len(p['symbols'])} symbols)",
                 "",
-                f"| metric | value |",
-                f"|---|---|",
+                "| metric | value |",
+                "|---|---|",
                 f"| win rate | {p['win_rate']*100:.0f}% |",
                 f"| total realized P&L | {_money(p['total_pnl'])} |",
                 f"| profit factor | {pf} |",
