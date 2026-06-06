@@ -201,15 +201,49 @@ The findings above were acted on the same day. State of each:
 
 | Rec / finding | Status | Where |
 |---|---|---|
-| #1 Force tool use (quant wrote code, not a backtest) | ✅ Done | PR #11 — imperative `quant` prompt + `quant-desk` `test` step |
-| #2 Assert tool-firing in workflow evals | ✅ Done (two parts) | Fork rubric tightened (#11); the real audit-log assertion for `kind: workflow` contributed upstream — protoAgent **#606** (inherited on next sync) |
+| #1 Force tool use (quant wrote code, not a backtest) | ✅ Done + validated | PR #11 prompt fix; live validation (§6c) found the deeper cause was a substrate plugin-tool wiring gap — fixed in protoAgent **#612** |
+| #2 Assert tool-firing in workflow evals | ✅ Done (two parts) | Fork rubric tightened (#11); the real audit-log assertion for `kind: workflow` contributed upstream — protoAgent **#606**. The tightened rubric is what caught the #612 plugin-tool gap on the live re-run (§6c) |
 | #3 Pin output language (CJK bleed) | ✅ Done | PR #11 — "English only" in `config/SOUL.md` |
 | #4 Latency | ⏳ Deferred | Needs live before/after validation — next live session |
 | #5 Close eval-coverage gaps | ◑ Partial | PR #12 — added `stock_price_history`, `crypto_price_history`, crypto backtest. Armed-broker approve→fill, mandate-rejection, and multi-turn need harness features (per-case file-write setup, interrupt resume, multi-prompt) that are upstream-owned — candidate contributions |
 | #6 Operational hygiene | ✅ Done | Test mandate disarmed; broker back to OFF |
 | **Engine hardening** (separate bug-hunt) | ✅ Done | PR #13 — 8 verified fixes (CAGR/vol NaN, profit_factor inf, IS/OOS boundary, stale-cost exposure caps, unsorted FIFO, atomic save) + tests |
 
-**Still open / not validated live:** the prompt-and-rubric fixes (#1–#3) are merged but their **behavioral** effect is unverified — the next live session must re-run `--category finance` (now 13 cases) and confirm the `quant-desk` step actually fires `backtest_strategy`. Plus the latency pass (#4).
+**Still open / not validated live:** the latency pass (#4). The behavioral
+validation of #1–#3 is now **done** — see §6c.
+
+---
+
+## 6c. Live validation — second pass (2026-06-06)
+
+Re-ran `--category finance` against the live agent (`protolabs/reasoning`) to
+confirm the #1–#3 fixes behaviorally. **11/13 passed.** The two failures were
+diagnosed from the audit log:
+
+- **`fin_quant_desk_workflow` (was FAIL → now PASS after fix).** The rubric failed
+  on "cites concrete backtest numbers." Root cause was **not** the prompt — the
+  quant step *did* call `backtest_strategy`, but the audit log showed it returned
+  `Error: backtest_strategy is not a valid tool`. The substrate's **out-of-graph**
+  runners (`run_manual_workflow` / `run_manual_subagent`, behind the operator
+  console's *Run workflow* button and the eval harness's `kind: workflow` cases)
+  rebuilt their tool_map from a bare `get_all_tools()` that **omits plugin + MCP
+  tools** — so any subagent whose allowlist names a plugin tool silently degraded
+  to text-only. The in-graph `task` path was unaffected (it gets `extra_tools`).
+  Fixed upstream by threading `extra_tools` (plugin + MCP) through the manual
+  runners — **protoAgent #612** (inherited on next sync). Verified end-to-end:
+  after the fix the quant step logs two successful `backtest_strategy` calls and
+  the synthesis cites real metrics (return vs buy-and-hold + Sharpe); the eval
+  flips FAIL → PASS. This supersedes the optimistic read of #1/#2 above — the
+  workflow's core value was broken via the REST path the whole time, masked
+  because the step still "completed".
+
+- **`fin_desk_delegation` (FAIL — timeout, separate issue).** The open-ended
+  committee view delegated correctly via `task`/`task_batch` and the tools worked
+  (30 successful backtests in the audit log), but it fanned out ~8 tickers × 4
+  strategies and blew the 360 s case timeout. This is a scope/concurrency issue
+  in the committee delegation, not a wiring bug — candidate fix: bound the
+  committee's fan-out, or tighten the subagent `max_turns` / prompt. Distinct
+  from #612.
 
 ---
 
