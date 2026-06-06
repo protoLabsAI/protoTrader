@@ -11,6 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Synced upstream protoAgent (post-0.15.2) — security & deploy hardening.** A
+  real merge (not squash) of upstream `main`, which also repairs the merge base
+  so future syncs only surface genuinely-new commits. Brings the security/deploy
+  batch v0.15.2 didn't include: a **default-on SSRF denylist for `fetch_url`**
+  that re-checks redirect hops (#583), an **opt-in CIDR allowlist** for outbound
+  A2A callbacks + `peer_consult` (#577), the server **default-binds `127.0.0.1`**
+  with containers opting into `0.0.0.0` explicitly via `PROTOAGENT_HOST` /
+  `--host` (#581), a **bounded LLM call** (timeout + retries) and a closed
+  push-notification client on shutdown (#582), `/healthz` wired into a Docker
+  `HEALTHCHECK` + k8s probes (#584), and the deploy entrypoint launching the
+  `server/` package with a CI guard (#580). Fork identity (README, `pyproject`
+  name/version) preserved; the finance domain layer is untouched.
+- **`CHANGELOG.md` is now `merge=ours`, not `merge=union`** (`.gitattributes`).
+  `union` was concatenating upstream's entire changelog into ours on every sync
+  (the recurring duplicate `[0.14.0]`/`[0.15.x]` sections). The fork keeps its own
+  curated changelog and summarizes each sync in one entry. Requires
+  `git config merge.ours.driver true` per clone (documented in `.gitattributes`).
+
+### Fixed
+- **Changelog: de-duplicated the upstream `[0.14.0]` section** the earlier
+  `merge=union` syncs had spliced in (its entries already live under `[0.15.0]`).
+
 ## [0.15.2] - 2026-06-06
 
 ### Changed
@@ -127,8 +150,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   search misses; the circuit breaker degrades to keyword-only if the gateway
   can't embed, so it's safe for forks (set `embed_model` to your gateway's, or
   `knowledge.embeddings: false`).
-
-## [0.14.0] - 2026-06-05
 
 ### Fixed
 - **Semantic-recall embeddings were non-functional against a real gateway**
