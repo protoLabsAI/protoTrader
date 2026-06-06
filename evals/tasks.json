@@ -390,10 +390,11 @@
     "verify_rubric": {
       "criteria": [
         "Reaches a clear GO / NO-GO / REFINE call",
-        "Backs the call with backtest numbers (e.g. Sharpe, or return vs buy-and-hold)",
-        "Addresses risk or robustness (drawdown, out-of-sample, or trade count)"
+        "Cites CONCRETE backtest output numbers actually produced by running the strategy — a specific Sharpe value AND a return vs buy-and-hold — not a description of code and not a statement that the backtest could not be run",
+        "Addresses risk or robustness with specifics (drawdown, out-of-sample, or trade count)",
+        "Does NOT substitute Python/backtest code for results, and does NOT claim no backtest was run (a real run produces the numbers above)"
       ],
-      "threshold": 0.66
+      "threshold": 0.75
     }
   }
 ]
