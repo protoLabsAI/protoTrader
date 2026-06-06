@@ -1,5 +1,11 @@
-# Append-only files conflict on every fork merge / upstream cherry-pick because
-# both sides add entries at the top. `merge=union` keeps BOTH sides instead of
-# raising a conflict — a fork's entries and upstream's coexist (re-order/dedupe
-# by hand at release time if needed). Confirmed pain across every downstream port.
-CHANGELOG.md merge=union
+# CHANGELOG.md is fork-owned. protoTrader pulls *from* protoAgent (upstream), so
+# the default `merge=union` is wrong here: it keeps BOTH sides of every conflict,
+# which concatenates upstream's entire changelog into ours on every sync (the
+# duplicate [0.14.0]/[0.15.x] sections we kept having to dedupe by hand).
+# `merge=ours` keeps the fork's curated changelog and ignores upstream's churn;
+# we summarize what a sync brings in one fork entry instead.
+#
+# NOTE: `merge=ours` needs the driver registered per-clone (it is NOT carried by
+# .gitattributes alone). Run once after cloning (also belongs in CI / bootstrap):
+#     git config merge.ours.driver true
+CHANGELOG.md merge=ours
