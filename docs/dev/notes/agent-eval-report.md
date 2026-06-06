@@ -195,6 +195,24 @@ multi-turn context; no hallucinated prices on bad input.
 
 ---
 
+## 6b. Status — what shipped (updated 2026-06-06)
+
+The findings above were acted on the same day. State of each:
+
+| Rec / finding | Status | Where |
+|---|---|---|
+| #1 Force tool use (quant wrote code, not a backtest) | ✅ Done | PR #11 — imperative `quant` prompt + `quant-desk` `test` step |
+| #2 Assert tool-firing in workflow evals | ✅ Done (two parts) | Fork rubric tightened (#11); the real audit-log assertion for `kind: workflow` contributed upstream — protoAgent **#606** (inherited on next sync) |
+| #3 Pin output language (CJK bleed) | ✅ Done | PR #11 — "English only" in `config/SOUL.md` |
+| #4 Latency | ⏳ Deferred | Needs live before/after validation — next live session |
+| #5 Close eval-coverage gaps | ◑ Partial | PR #12 — added `stock_price_history`, `crypto_price_history`, crypto backtest. Armed-broker approve→fill, mandate-rejection, and multi-turn need harness features (per-case file-write setup, interrupt resume, multi-prompt) that are upstream-owned — candidate contributions |
+| #6 Operational hygiene | ✅ Done | Test mandate disarmed; broker back to OFF |
+| **Engine hardening** (separate bug-hunt) | ✅ Done | PR #13 — 8 verified fixes (CAGR/vol NaN, profit_factor inf, IS/OOS boundary, stale-cost exposure caps, unsorted FIFO, atomic save) + tests |
+
+**Still open / not validated live:** the prompt-and-rubric fixes (#1–#3) are merged but their **behavioral** effect is unverified — the next live session must re-run `--category finance` (now 13 cases) and confirm the `quant-desk` step actually fires `backtest_strategy`. Plus the latency pass (#4).
+
+---
+
 ## 7. How to reproduce
 
 ```sh
