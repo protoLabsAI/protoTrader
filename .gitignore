@@ -19,6 +19,13 @@ config/langgraph-config.yaml
 # the wizard has been run. Not config to commit.
 config/.setup-complete
 
+# Paper-broker local state — the gated paper broker's mandate, fill ledger, and
+# running positions/cash. Per-deployment runtime artifacts written during
+# testing; never config to commit. Disarm by deleting the mandate.
+config/broker_mandate.yaml
+config/broker_paper.json
+config/broker_audit.jsonl
+
 # Local-run artifacts — autostart stdout/stderr logs + memory middleware
 # fallback directory when /sandbox is not available.
 logs/
