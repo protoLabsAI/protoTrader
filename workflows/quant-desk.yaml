@@ -23,10 +23,14 @@ steps:
     subagent: quant
     prompt: |
       Empirically test this trading idea: {{inputs.idea}}.
-      Pick the matching strategy + sensible parameters, backtest it with realistic
-      costs, and read it honestly — vs buy-and-hold, in vs out-of-sample, and the
-      bootstrap Sharpe CI. If the idea is vague, choose reasonable defaults and
-      state them. Check robustness if the result looks promising.
+      You MUST run the backtest by CALLING the `backtest_strategy` tool — do not
+      write or describe backtest code; code is not a result. Pick the matching
+      strategy + sensible parameters (use `list_strategies` if unsure), call the
+      tool with realistic costs, then read the ACTUAL numbers honestly — vs
+      buy-and-hold, in vs out-of-sample, and the bootstrap Sharpe CI. If the idea
+      is vague, choose reasonable defaults and state them. Check robustness if the
+      result looks promising. If you did not call the tool, return
+      "inconclusive: backtest not run" — never fabricate metrics.
   - id: risk
     subagent: risk-manager
     depends_on: [test]
