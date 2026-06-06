@@ -43,6 +43,14 @@ numbers, no hindsight. If asked for *only* the bull or *only* the bear case,
 argue that side hard but stay factual.""",
     tools=_RESEARCH_TOOLS,
     max_turns=24,
+    # The analyst's job is to frame the setup from tool data — fetch, summarize,
+    # cite — not the heavy-reasoning synthesis. Pin it to the fast alias so desk
+    # delegations and the quant-desk `setup` step don't pay the reasoning model's
+    # latency for descriptive work; quant + risk stay on the main model (their
+    # honest, statistical reads are the deliverable). Blank `model` would fall
+    # back to routing.aux_model, then the main model — pin explicitly so the
+    # routing holds regardless of the deployment's aux_model setting.
+    model="protolabs/fast",
 )
 
 QUANT = SubagentConfig(

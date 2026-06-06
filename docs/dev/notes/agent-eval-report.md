@@ -204,13 +204,44 @@ The findings above were acted on the same day. State of each:
 | #1 Force tool use (quant wrote code, not a backtest) | ✅ Done + validated | PR #11 prompt fix; live validation (§6c) found the deeper cause was a substrate plugin-tool wiring gap — fixed in protoAgent **#612** |
 | #2 Assert tool-firing in workflow evals | ✅ Done (two parts) | Fork rubric tightened (#11); the real audit-log assertion for `kind: workflow` contributed upstream — protoAgent **#606**. The tightened rubric is what caught the #612 plugin-tool gap on the live re-run (§6c) |
 | #3 Pin output language (CJK bleed) | ✅ Done | PR #11 — "English only" in `config/SOUL.md` |
-| #4 Latency | ⏳ Deferred | Needs live before/after validation — next live session |
+| #4 Latency | ✅ Done (first cut) | Routed the desk's `market-analyst` (setup/frame step) to `protolabs/fast`, keeping quant + risk synthesis on `reasoning`. quant-desk **91–100 s → 50 s (~45%)**, rubric still PASS, output quality intact (§6d). More headroom in the multi-name committee fan-out (deferred) |
 | #5 Close eval-coverage gaps | ◑ Partial | PR #12 — added `stock_price_history`, `crypto_price_history`, crypto backtest. Armed-broker approve→fill, mandate-rejection, and multi-turn need harness features (per-case file-write setup, interrupt resume, multi-prompt) that are upstream-owned — candidate contributions |
 | #6 Operational hygiene | ✅ Done | Test mandate disarmed; broker back to OFF |
 | **Engine hardening** (separate bug-hunt) | ✅ Done | PR #13 — 8 verified fixes (CAGR/vol NaN, profit_factor inf, IS/OOS boundary, stale-cost exposure caps, unsorted FIFO, atomic save) + tests |
 
-**Still open / not validated live:** the latency pass (#4). The behavioral
-validation of #1–#3 is now **done** — see §6c.
+**Still open / not validated live:** a deeper latency pass on the multi-name
+committee fan-out (`fin_desk_delegation`, §6c). The #1–#3 behavioral validation
+(§6c) and a first latency cut (#4, §6d) are now **done**.
+
+---
+
+## 6d. Latency — first cut (2026-06-06)
+
+Profiled the slow paths from the suite timings: single tool reads are ~10–15 s
+(the reasoning model's think time); the **desk delegations are the cost** —
+`quant-desk` ~91–100 s, the open committee 360 s+ (timeout). All three desk
+subagents (`market-analyst`, `quant`, `risk-manager`) ran on the full
+`protolabs/reasoning` model.
+
+**Lever (conservative, quality-preserving):** the `market-analyst` step is
+descriptive — fetch quotes/fundamentals, summarize, cite — not the heavy
+statistical reasoning that is the deliverable. Pinned it to `protolabs/fast`
+(`SubagentConfig.model`), leaving `quant` and `risk-manager` on `reasoning`.
+Confirmed `protolabs/fast` is a live gateway alias first.
+
+**Result:** `fin_quant_desk_workflow` **91–100 s → 50 s (~45% faster)**, rubric
+still PASS, output unchanged in substance (leads with the backtest numbers —
+return vs B&H, IS/OOS Sharpe, bootstrap CI, trade count). Low blast radius: the
+analyst subagent is only invoked via desk delegation, so the standalone tool
+cases are unaffected.
+
+**Still open:** the committee fan-out (`fin_desk_delegation`) ran ~30 backtests
+across ~8 tickers × 4 strategies → 360 s timeout. That's scope, not model speed —
+the analyst-on-fast change helps its research legs but the quant fan-out
+dominates. Next: bound the committee's per-name / per-strategy fan-out (prompt or
+a fan-out cap), and consider an aux-model route for the committee's research
+subagents too. A single 50 s sample isn't a p50/p95 distribution — capture those
+over repeated runs before claiming the number broadly.
 
 ---
 
