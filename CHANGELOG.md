@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.2] - 2026-06-06
+
 ### Changed
 - **Synced upstream protoAgent (post-0.15.1).** Rolls the inherited substrate up
   to upstream `main` past the v0.15.1 release. Highlights: the **config-driven

@@ -1,6 +1,6 @@
 [project]
 name = "prototrader"
-version = "0.15.1"
+version = "0.15.2"
 description = "protoTrader — natural-language trading research agent (A2A 1.0 on LangGraph); Vibe-Trading reimagined on the protoAgent paradigm"
 requires-python = ">=3.11"
 
