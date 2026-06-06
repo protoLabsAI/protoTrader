@@ -11,67 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2026-06-04
-
-### Added
-- **Slice 6 — gated paper execution.** A `broker` plugin adds paper-only order
-  placement behind the full safety stack so live trading can be layered on later
-  without re-plumbing the rails: a **mandate** (master switch + per-order, per-name,
-  gross-exposure and daily-order limits — **OFF by default**, refusing every order
-  until `broker_mandate.yaml` sets `enabled: true`), a filesystem **kill-switch**
-  (`touch config/TRADING_HALT` halts instantly), **per-order human approval** (the
-  task pauses as `input-required` until the operator types APPROVE), simulated fills
-  at a live quote with friction, and an append-only **audit ledger**. `mode: live`
-  is deliberately not implemented — this build cannot move real money. Tools:
-  `broker_account`, `broker_place_order`, `broker_orders`; a `place-a-paper-trade`
-  skill drives the confirm-armed → size → approve → fill loop. Offline tests cover
-  the gate, every limit, the fill math and persistence; live-verified OFF→ARMED and
-  the kill-switch.
-- **Slice 5 — behavioral / Shadow Account.** A `behavioral` plugin:
-  `analyze_trade_journal` parses a journal CSV (tolerant of broker-export column
-  names), FIFO-pairs fills into round-trips, and computes a behavioral profile +
-  bias flags — loss aversion (holding losers longer), asymmetric losers, negative
-  edge (PF<1), revenge sizing, cutting winners early. A `shadow-account` skill
-  turns it into the "what if you'd followed your own best behavior" read + one or
-  two ranked fixes. Offline tests on a synthetic biased journal.
-- **Slice 4 — factors (Alpha Zoo).** A `factors` plugin: `factor_eval` and
-  `factor_zoo` score price/volume factors (momentum_12_1, reversal_1m, low_vol,
-  trend_200d, volume_trend) by **Information Coefficient** / rank-IC / IR over a
-  universe, with alive/weak/reversed/dead verdicts. An `evaluate-a-factor` skill
-  reads the IC honestly (sample-specific, regime-dependent — a reversed factor is
-  a finding). Offline tests on synthetic mean-reverting data.
-- **Slice 3 — the desk.** A `finance-desk` plugin registers three specialist
-  **subagents** — `market-analyst`, `quant`, `risk-manager` — that the lead agent
-  delegates to via `task`. Two declarative **workflow presets** in `workflows/`:
-  `investment-committee` (bull/bear debate → risk review → PM synthesis) and
-  `quant-desk` (setup → backtest → risk → go/no-go). Replaces Vibe-Trading's swarm
-  with protoAgent subagents + workflows (ADR 0002).
-- **Slice 2 — backtesting.** A `backtest` plugin: `backtest_strategy` runs
-  canonical strategies (MA cross, RSI mean-reversion, breakout, buy-hold) over
-  fetched OHLCV with realistic costs/slippage, **no look-ahead**, an
-  out-of-sample split, a buy-and-hold benchmark, and a stationary-bootstrap
-  Sharpe CI. A `backtest-a-strategy` skill drives an honest edge / no-edge /
-  inconclusive read. Offline engine tests included.
-- **Slice 1 — market data + ticker research.** A `finance-data` plugin (ADR
-  0018) with 5 no-auth tools: `stock_quote` / `stock_price_history` /
-  `stock_fundamentals` (yfinance, US equities + ETFs) and `crypto_quote` /
-  `crypto_price_history` (ccxt, public crypto). A `research-a-ticker` skill drives
-  a quote → trend → context → news → structured-read pipeline. Optional deps in
-  `requirements-finance.txt`; tools degrade to a clear install hint without them.
-
-### Changed
-- **Forked from protoAgent as `protoTrader`** — a natural-language trading
-  *research* agent (Vibe-Trading reimagined on the protoAgent paradigm). Set
-  `identity.name = protoTrader`, persona (`SOUL.md`), and the scope/build plan
-  (`docs/dev/notes/prototrader-scope.md`). History-preserving fork; `upstream` =
-  protoAgent for fleet fix flow-down. Internal `protoagent` identifiers kept.
+## [0.15.1] - 2026-06-05
 
 ### Fixed
-- **Plugins can now be multi-module (relative imports).** The loader sanitizes a
-  hyphenated plugin id into a valid module name and registers the package in
-  `sys.modules` before exec, so a plugin can split across files (`from .tools
-  import …`). Surfaced building `finance-data`; upstreamed to the protoAgent
-  template.
+- **Console: every tool call in a turn now renders, not just one.** The chat
+  stream mapped tool-call wire fields with a single hard-coded shape, so only one
+  tool invocation surfaced in the operator console and the rest were silently
+  dropped. Map the wire fields generically so all tool calls render. (#3)
+- **Browser chat was blank — CRLF-delimited SSE frames weren't parsed.** The
+  console's SSE reader split on `\n\n` only, but the server emits CRLF
+  (`\r\n\r\n`) frame delimiters, so the browser saw no events and the chat stayed
+  empty. Parse both delimiters. (#1)
+
+### Changed
+- **Synced upstream protoAgent v0.15.0** (#2). Rolls the inherited substrate up
+  to upstream's 0.15.0 — the `server.py` → `server/` package decomposition
+  (ADR 0023), the agent-memory upgrade (semantic fact extraction + namespaces,
+  ADR 0021), the Activity provenance feed (ADR 0022), and semantic-recall
+  embeddings on by default. See the [0.15.0] section below for the full list.
+
 ## [0.15.0] - 2026-06-05
 
 ### Changed
@@ -140,8 +98,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   search misses; the circuit breaker degrades to keyword-only if the gateway
   can't embed, so it's safe for forks (set `embed_model` to your gateway's, or
   `knowledge.embeddings: false`).
-
-## [0.14.0] - 2026-06-05
 
 ### Fixed
 - **Semantic-recall embeddings were non-functional against a real gateway**
@@ -282,6 +238,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the mark is a crisp inline SVG that pops against the chrome. Wordmark + glow
   unchanged. (Topbar `brand-mark` + favicon still use the static asset — a
   follow-up if we want full consistency.)
+
+## [0.14.0] - 2026-06-04
+
+### Added
+- **Slice 6 — gated paper execution.** A `broker` plugin adds paper-only order
+  placement behind the full safety stack so live trading can be layered on later
+  without re-plumbing the rails: a **mandate** (master switch + per-order, per-name,
+  gross-exposure and daily-order limits — **OFF by default**, refusing every order
+  until `broker_mandate.yaml` sets `enabled: true`), a filesystem **kill-switch**
+  (`touch config/TRADING_HALT` halts instantly), **per-order human approval** (the
+  task pauses as `input-required` until the operator types APPROVE), simulated fills
+  at a live quote with friction, and an append-only **audit ledger**. `mode: live`
+  is deliberately not implemented — this build cannot move real money. Tools:
+  `broker_account`, `broker_place_order`, `broker_orders`; a `place-a-paper-trade`
+  skill drives the confirm-armed → size → approve → fill loop. Offline tests cover
+  the gate, every limit, the fill math and persistence; live-verified OFF→ARMED and
+  the kill-switch.
+- **Slice 5 — behavioral / Shadow Account.** A `behavioral` plugin:
+  `analyze_trade_journal` parses a journal CSV (tolerant of broker-export column
+  names), FIFO-pairs fills into round-trips, and computes a behavioral profile +
+  bias flags — loss aversion (holding losers longer), asymmetric losers, negative
+  edge (PF<1), revenge sizing, cutting winners early. A `shadow-account` skill
+  turns it into the "what if you'd followed your own best behavior" read + one or
+  two ranked fixes. Offline tests on a synthetic biased journal.
+- **Slice 4 — factors (Alpha Zoo).** A `factors` plugin: `factor_eval` and
+  `factor_zoo` score price/volume factors (momentum_12_1, reversal_1m, low_vol,
+  trend_200d, volume_trend) by **Information Coefficient** / rank-IC / IR over a
+  universe, with alive/weak/reversed/dead verdicts. An `evaluate-a-factor` skill
+  reads the IC honestly (sample-specific, regime-dependent — a reversed factor is
+  a finding). Offline tests on synthetic mean-reverting data.
+- **Slice 3 — the desk.** A `finance-desk` plugin registers three specialist
+  **subagents** — `market-analyst`, `quant`, `risk-manager` — that the lead agent
+  delegates to via `task`. Two declarative **workflow presets** in `workflows/`:
+  `investment-committee` (bull/bear debate → risk review → PM synthesis) and
+  `quant-desk` (setup → backtest → risk → go/no-go). Replaces Vibe-Trading's swarm
+  with protoAgent subagents + workflows (ADR 0002).
+- **Slice 2 — backtesting.** A `backtest` plugin: `backtest_strategy` runs
+  canonical strategies (MA cross, RSI mean-reversion, breakout, buy-hold) over
+  fetched OHLCV with realistic costs/slippage, **no look-ahead**, an
+  out-of-sample split, a buy-and-hold benchmark, and a stationary-bootstrap
+  Sharpe CI. A `backtest-a-strategy` skill drives an honest edge / no-edge /
+  inconclusive read. Offline engine tests included.
+- **Slice 1 — market data + ticker research.** A `finance-data` plugin (ADR
+  0018) with 5 no-auth tools: `stock_quote` / `stock_price_history` /
+  `stock_fundamentals` (yfinance, US equities + ETFs) and `crypto_quote` /
+  `crypto_price_history` (ccxt, public crypto). A `research-a-ticker` skill drives
+  a quote → trend → context → news → structured-read pipeline. Optional deps in
+  `requirements-finance.txt`; tools degrade to a clear install hint without them.
+
+### Changed
+- **Forked from protoAgent as `protoTrader`** — a natural-language trading
+  *research* agent (Vibe-Trading reimagined on the protoAgent paradigm). Set
+  `identity.name = protoTrader`, persona (`SOUL.md`), and the scope/build plan
+  (`docs/dev/notes/prototrader-scope.md`). History-preserving fork; `upstream` =
+  protoAgent for fleet fix flow-down. Internal `protoagent` identifiers kept.
+
+### Fixed
+- **Plugins can now be multi-module (relative imports).** The loader sanitizes a
+  hyphenated plugin id into a valid module name and registers the package in
+  `sys.modules` before exec, so a plugin can split across files (`from .tools
+  import …`). Surfaced building `finance-data`; upstreamed to the protoAgent
+  template.
 
 ## [0.13.2] - 2026-06-04
 
