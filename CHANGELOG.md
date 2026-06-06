@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Synced upstream protoAgent (post-0.15.1).** Rolls the inherited substrate up
+  to upstream `main` past the v0.15.1 release. Highlights: the **config-driven
+  A2A agent card** (#570) — a fork now declares its advertised skills and card
+  description via `a2a.skills` / `a2a.description` in `langgraph-config.yaml` or a
+  plugin (`register_a2a_skill`), with the template `_SKILL_SPECS` as fallback, so
+  protoTrader can advertise finance skills without editing `server/a2a.py`; a
+  **pluggable `thread_id` resolver** (#571) for scoping memory off request
+  metadata; an **opt-in CIDR allowlist** for outbound A2A callbacks + peer_consult
+  (#572, new `security.py`); the operator-fork contract docs (#573); a console
+  Settings sub-nav layout fix (#567); and stream-factory test mocks that accept
+  `**kwargs` so fork param additions don't break (#569). Fork identity (README,
+  `pyproject` name/description) preserved.
+
 ## [0.15.1] - 2026-06-05
 
 ### Fixed
@@ -29,6 +43,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (ADR 0023), the agent-memory upgrade (semantic fact extraction + namespaces,
   ADR 0021), the Activity provenance feed (ADR 0022), and semantic-recall
   embeddings on by default. See the [0.15.0] section below for the full list.
+- **Browser chat rendered blank** (console). The chat turn streams over `/a2a`
+  `SendStreamingMessage` and the client hand-parses the SSE body, but
+  `drainSseBuffer` scanned for an LF blank line (`\n\n`) while the a2a-sdk
+  separates events with **CRLF** (`\r\n\r\n`) — so no frame boundary was found,
+  zero frames parsed, and the assistant bubble stayed empty even though the
+  agent replied. Now matches any blank-line boundary (`\r\n\r\n` / `\n\n` /
+  `\r\r`). Browser-only (the desktop path uses the non-streaming `/api/chat`
+  fallback, which masked it); the e2e mock now emits CRLF so CI guards it.
+- **Agent name shown as a lowercase slug** in the console (tab title, topbar,
+  boot gate, runtime panel). A fork configures a lowercase identity (`gina`,
+  `roxy`) because the name doubles as a metrics/API-key/path slug; the UI now
+  display-cases it (`gina` → `Gina`) via a `brandName()` helper while keeping the
+  `protoAgent` brand and any intentional casing.
 
 ## [0.15.0] - 2026-06-05
 
@@ -98,6 +125,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   search misses; the circuit breaker degrades to keyword-only if the gateway
   can't embed, so it's safe for forks (set `embed_model` to your gateway's, or
   `knowledge.embeddings: false`).
+
+## [0.14.0] - 2026-06-05
 
 ### Fixed
 - **Semantic-recall embeddings were non-functional against a real gateway**
