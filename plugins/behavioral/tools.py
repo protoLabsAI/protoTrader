@@ -33,7 +33,7 @@ async def analyze_trade_journal(csv_text: str) -> str:
             p = engine.profile(csv_text)
             if "error" in p:
                 return f"Error: {p['error']}"
-            pf = "∞" if p["profit_factor"] == float("inf") else f"{p['profit_factor']:.2f}"
+            pf = "∞" if p["profit_factor"] in (None, float("inf")) else f"{p['profit_factor']:.2f}"
             lines = [
                 f"**Trade journal — {p['trades']} round-trips** "
                 f"({p['date_range'][0][:10]} → {p['date_range'][1][:10]}; {len(p['symbols'])} symbols)",

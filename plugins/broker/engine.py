@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -155,7 +156,13 @@ class PaperBroker:
         return _State(cash=self.mandate.starting_cash)
 
     def _save(self) -> None:
-        _state_path().write_text(json.dumps(self.state.__dict__, indent=2))
+        # Atomic write: a crash mid-write would otherwise truncate the state file
+        # and the next load silently reinitializes to starting cash (wiping
+        # positions + realized P&L). Write to a temp file, then os.replace.
+        p = _state_path()
+        tmp = p.with_suffix(p.suffix + ".tmp")
+        tmp.write_text(json.dumps(self.state.__dict__, indent=2))
+        os.replace(tmp, p)
 
     def _audit(self, event: dict) -> None:
         event = {"ts": _now(), **event}
@@ -177,7 +184,11 @@ class PaperBroker:
                    for s, p in self.state.positions.items())
 
     # -- order validation (paper, long-only v1) --
-    def validate(self, symbol: str, side: str, qty: float, price: float) -> tuple[bool, str]:
+    def validate(self, symbol: str, side: str, qty: float, price: float,
+                 mark: dict | None = None) -> tuple[bool, str]:
+        # ``mark`` carries live prices for OTHER held symbols so the exposure /
+        # concentration caps value the existing book at market, not stale cost
+        # basis. The order symbol is always marked at its order ``price``.
         m = self.mandate
         if qty <= 0:
             return False, "quantity must be positive"
@@ -202,15 +213,19 @@ class PaperBroker:
             return True, "ok"
 
         # buy: cash + exposure + concentration
-        cost = notional * (1 + (_SLIPPAGE_BPS + _COMMISSION_BPS) / 1e4)
+        # Commission is charged on the slipped price (see fill), so cost compounds
+        # the two bps rather than summing them — match fill exactly so a buy
+        # validated at the cash limit can't leave cash a hair below zero.
+        cost = notional * (1 + _SLIPPAGE_BPS / 1e4) * (1 + _COMMISSION_BPS / 1e4)
         if cost > self.state.cash:
             return False, f"insufficient cash (${self.state.cash:,.0f}) for ${cost:,.0f}"
-        eq = self.equity({symbol: price})
+        marks = {**(mark or {}), symbol: price}
+        eq = self.equity(marks)
         pos_val = self.state.positions.get(symbol, {}).get("qty", 0) * price + notional
         if eq > 0 and pos_val / eq * 100 > m.max_position_pct + 1e-9:
             return False, (f"would put {pos_val/eq*100:.0f}% in {symbol} — over the "
                            f"{m.max_position_pct:.0f}% per-name cap")
-        new_gross = self.gross_exposure({symbol: price}) + notional
+        new_gross = self.gross_exposure(marks) + notional
         if eq > 0 and new_gross / eq * 100 > m.max_gross_exposure_pct + 1e-9:
             return False, (f"would lift gross exposure to {new_gross/eq*100:.0f}% — over the "
                            f"{m.max_gross_exposure_pct:.0f}% cap")

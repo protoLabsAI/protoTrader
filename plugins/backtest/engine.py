@@ -126,19 +126,30 @@ def simulate(df: pd.DataFrame, pos: pd.Series, cost_bps: float = 5.0,
 
 
 def _max_dd(equity: pd.Series) -> float:
+    if not len(equity):
+        return 0.0
     peak = equity.cummax()
-    return float(((equity / peak) - 1).min())
+    dd = float(((equity / peak) - 1).min())
+    return max(dd, -1.0)  # floor at -100%; negative equity can't read below total ruin
 
 
 def metrics(sim: pd.DataFrame, idx: pd.DatetimeIndex) -> dict:
     r = sim["strat"]
     ppy = _periods_per_year(idx)
     n = len(r)
-    total = float(sim["equity"].iloc[-1] - 1) if n else 0.0
+    # Rebase equity within THIS window from the per-bar strat returns, rather than
+    # reading the full cumulative curve. Lets a sliced sim (IS/OOS) be measured on
+    # its own window — the boundary bar's return is preserved (it was computed on
+    # the full frame) instead of zeroed by re-simulating the slice — and keeps a
+    # non-positive equity from poisoning CAGR/vol/drawdown (NaN → JSON hazard).
+    eq = (1 + r).cumprod()
+    final_eq = float(eq.iloc[-1]) if n else 1.0
+    total = final_eq - 1.0 if n else 0.0
     years = max(n / ppy, 1e-9)
-    cagr = float(sim["equity"].iloc[-1] ** (1 / years) - 1) if n else 0.0
-    vol = float(r.std() * np.sqrt(ppy))
-    sharpe = float(r.mean() / r.std() * np.sqrt(ppy)) if r.std() > 0 else 0.0
+    cagr = float(final_eq ** (1 / years) - 1) if (n and final_eq > 0) else 0.0
+    rstd = float(r.std()) if n > 1 else 0.0  # std is undefined (NaN) for n<=1
+    vol = float(rstd * np.sqrt(ppy)) if np.isfinite(rstd) else 0.0
+    sharpe = float(r.mean() / rstd * np.sqrt(ppy)) if rstd > 0 else 0.0
     downside = r[r < 0].std()
     sortino = float(r.mean() / downside * np.sqrt(ppy)) if downside and downside > 0 else 0.0
     # trades = entries (0/neg → positive held)
@@ -146,11 +157,12 @@ def metrics(sim: pd.DataFrame, idx: pd.DatetimeIndex) -> dict:
     entries = int(((held > 0) & (held.shift(1) <= 0)).sum())
     bar_win = float((r[sim["turn"] == 0] > 0).mean()) if (sim["turn"] == 0).any() else float((r > 0).mean())
     exposure = float((held != 0).mean())
+    bh_total = float((1 + sim["ret"]).cumprod().iloc[-1] - 1) if n else 0.0
     return {
         "total_return": total, "cagr": cagr, "vol": vol, "sharpe": sharpe,
-        "sortino": sortino, "max_dd": _max_dd(sim["equity"]), "trades": entries,
+        "sortino": sortino, "max_dd": _max_dd(eq), "trades": entries,
         "bar_win_rate": bar_win, "exposure": exposure, "bars": n,
-        "bh_total_return": float(sim["bh_equity"].iloc[-1] - 1) if n else 0.0,
+        "bh_total_return": bh_total,
     }
 
 
@@ -189,8 +201,11 @@ def backtest(symbol: str, strategy: str, params: dict | None = None,
     sim = simulate(df, pos, cost_bps=cost_bps, slippage_bps=slippage_bps)
     full = metrics(sim, df.index)
     cut = int(len(df) * (1 - oos_frac))
-    is_m = metrics(simulate(df.iloc[:cut], pos.iloc[:cut], cost_bps, slippage_bps), df.index[:cut]) if cut > 20 else {}
-    oos_m = metrics(simulate(df.iloc[cut:], pos.iloc[cut:], cost_bps, slippage_bps), df.index[cut:]) if (len(df) - cut) > 20 else {}
+    # Slice the already-computed sim (don't re-simulate the slices): re-simulating
+    # recomputes pct_change on the slice, which zeros the first OOS bar's return
+    # and the carried-in position, distorting the IS/OOS honesty split.
+    is_m = metrics(sim.iloc[:cut], df.index[:cut]) if cut > 20 else {}
+    oos_m = metrics(sim.iloc[cut:], df.index[cut:]) if (len(df) - cut) > 20 else {}
     return {
         "symbol": symbol, "strategy": strategy, "params": params or {},
         "period": period, "interval": interval,

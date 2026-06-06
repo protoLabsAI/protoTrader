@@ -130,7 +130,18 @@ async def broker_place_order(symbol: str, side: str, qty: float,
                     f"(last {px:.2f}). Paper v1 fills only marketable orders — not resting.")
         px = limit_price
 
-    ok, reason = b.validate(symbol, side, qty, px)
+    # Mark other held positions at live prices so the exposure/concentration caps
+    # value an appreciated book correctly (not at stale cost basis). Quote failures
+    # fall back to cost inside validate.
+    marks: dict = {}
+    for held_sym in list(b.state.positions):
+        if held_sym == symbol:
+            continue
+        try:
+            marks[held_sym] = await asyncio.to_thread(quote, held_sym)
+        except Exception:
+            pass
+    ok, reason = b.validate(symbol, side, qty, px, mark=marks)
     if not ok:
         b._audit({"event": "rejected", "symbol": symbol, "side": side, "qty": qty,
                   "price": px, "reason": reason})

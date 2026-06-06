@@ -116,7 +116,13 @@ def round_trips(fills: list[dict]) -> list[dict]:
 
 def profile(csv_text: str) -> dict:
     fills = parse_fills(csv_text)
-    trips = round_trips(fills)
+    # Sort dated fills chronologically before FIFO pairing. Broker exports are
+    # often grouped by symbol rather than by time; unsorted rows otherwise
+    # mis-pair lots and produce negative hold-days. Undated rows keep file order
+    # (their hold-days stay None).
+    _dated = sorted((f for f in fills if f["date"] is not None), key=lambda f: f["date"])
+    _undated = [f for f in fills if f["date"] is None]
+    trips = round_trips(_dated + _undated)
     if not trips:
         return {"error": "no closed round-trips found (need matching buys and sells per symbol)"}
     pnls = [t["pnl"] for t in trips]
@@ -162,7 +168,7 @@ def profile(csv_text: str) -> dict:
     return {
         "trades": n, "win_rate": wr, "total_pnl": sum(pnls),
         "avg_win": avg_win, "avg_loss": avg_loss,
-        "profit_factor": (gross_win / gross_loss) if gross_loss > 0 else float("inf"),
+        "profit_factor": (gross_win / gross_loss) if gross_loss > 0 else None,  # None = no losses (JSON-safe; avoids inf)
         "expectancy": mean(pnls),
         "avg_win_hold_days": mean(win_hold) if win_hold else None,
         "avg_loss_hold_days": mean(loss_hold) if loss_hold else None,
