@@ -8,6 +8,10 @@ is an optional, gated, last slice.
 The win: protoAgent already *is* the engine Vibe-Trading hand-built. We inherit it
 for free and add only the **finance domain layer**.
 
+> **Built reference** (what shipped): [Finance tools](../../reference/finance-tools.md)
+> (the 15 tools) and [The desk](../../guides/the-desk.md) (subagents + workflows).
+> This doc is the *plan*; those are the *as-built* docs.
+
 ## What we inherit from protoAgent (do NOT rebuild)
 
 | Vibe-Trading built… | protoAgent already provides |
