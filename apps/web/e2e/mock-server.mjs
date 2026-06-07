@@ -71,6 +71,9 @@ async function readBody(req) {
 }
 
 // GET API routes → canned fixtures.
+// Git-installed plugins (ADR 0027) — mutable so install/uninstall round-trip in e2e.
+let INSTALLED_PLUGINS = [];
+
 function handleApiGet(pathname) {
   switch (pathname) {
     case "/api/runtime/status":
@@ -106,6 +109,8 @@ function handleApiGet(pathname) {
       return DELEGATE_TYPES;
     case "/api/delegates":
       return DELEGATES;
+    case "/api/plugins/installed":
+      return { plugins: INSTALLED_PLUGINS };
     case "/api/workflows":
       return { workflows: WORKFLOWS };
     case "/api/activity":
@@ -247,7 +252,43 @@ const server = createServer(async (req, res) => {
     if (req.method === "DELETE" && /^\/api\/playbooks\/\d+$/.test(pathname)) {
       return sendJson(res, { enabled: true, deleted: true });
     }
+    if (pathname === "/api/plugins/install") {
+      const id = (String(body.url || "").replace(/\.git$/, "").split("/").pop()) || "ext_plugin";
+      const sha = "abc1234567def8900000000000000000000abcd";
+      INSTALLED_PLUGINS = INSTALLED_PLUGINS.filter((p) => p.id !== id).concat({
+        id, source_url: body.url, requested_ref: body.ref || "", resolved_sha: sha,
+        present: true, enabled: false,
+        manifest: { name: id, version: "0.1.0", description: "installed via console", requires_pip: [], views: [] },
+      });
+      return sendJson(res, {
+        installed: {
+          id, name: id, version: "0.1.0", description: "installed via console",
+          resolved_sha: sha, source_url: body.url, requires_pip: [], capabilities: {},
+          contributes: { views: [], secrets: [] },
+        },
+        restart_required: true,
+      });
+    }
+    if (req.method === "DELETE" && /^\/api\/plugins\/[^/]+$/.test(pathname)) {
+      const id = decodeURIComponent(pathname.split("/").pop());
+      INSTALLED_PLUGINS = INSTALLED_PLUGINS.filter((p) => p.id !== id);
+      return sendJson(res, { ok: true });
+    }
     return sendJson(res, { ok: true });
+  }
+  // Plugin-served pages (ADR 0026) — a tiny listener page so the e2e can assert
+  // the console's post-load init handshake (token + theme via postMessage).
+  if (pathname.startsWith("/plugins/") && req.method === "GET") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    res.end(
+      `<!doctype html><html><body data-bridge="pending">` +
+      `<p id="p">${pathname}</p><script>` +
+      `window.addEventListener("message",function(e){var m=e.data||{};` +
+      `if(m.type!=="protoagent:init")return;` +
+      `document.body.setAttribute("data-bridge",m.token?"authed":"anon");});` +
+      `</script></body></html>`,
+    );
+    return;
   }
   if (req.method !== "GET") {
     return sendJson(res, { detail: "method not allowed" }, 405);
