@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **protoTrader now consumes the finance plugin as a git install, not a vendored
+  copy — it's the host harness for [`prototrader-finance`](https://github.com/protoLabsAI/prototrader-finance).**
+  The finance bundle was extracted to its own public repo (installable into any
+  protoAgent via `plugin install <git-url>`, ADR 0027). The fork removed the
+  vendored `plugins/prototrader-finance/` and now **pins it in `plugins.lock`**
+  (`plugin sync` restores the code from the pinned SHA). One source of truth: the
+  plugin repo owns the finance **engine unit tests** (backtest / broker / factor /
+  behavioral); the fork keeps the **host-integration** check (the plugin loads
+  through the real loader with its full surface — tools, desk subagents, dashboard
+  view/route, auto-discovered skills + workflows) plus the live evals. CI gains a
+  `plugin sync` step before pytest; the Docker image carries the finance deps and
+  syncs the plugin at boot (best-effort). `plugins.enabled` lists the plugin in the
+  example config.
+
 ### Added
 - **The finance domain layer is now one full-bundle plugin — `plugins/prototrader-finance`.**
   Consolidated the six separate finance plugins (`finance-data`, `backtest`,

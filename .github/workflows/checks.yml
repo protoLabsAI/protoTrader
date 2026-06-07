@@ -82,6 +82,13 @@ jobs:
           . .venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest pytest-asyncio
+      - name: Sync git-installed plugins (dogfood — restore prototrader-finance from plugins.lock)
+        # protoTrader is the host harness for the prototrader-finance plugin; it's
+        # consumed via plugins.lock, not vendored. `sync` re-clones it at the pinned
+        # SHA so the host-integration tests + the quant-desk eval recipe are present.
+        run: |
+          . .venv/bin/activate
+          python -m server plugin sync
       - name: Run tests
         run: |
           . .venv/bin/activate

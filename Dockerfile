@@ -58,10 +58,13 @@ RUN useradd -m -s /bin/bash -u ${SANDBOX_UID} sandbox
 # tier (server.py reads it).
 ARG UI=none
 COPY requirements*.txt /tmp/
+# protoTrader is the host harness for the prototrader-finance plugin, so the image
+# also carries the finance deps (yfinance/ccxt) the plugin declares — otherwise the
+# git-installed plugin's market-data tools would degrade at runtime.
 RUN if [ "$UI" = "full" ]; then \
-      pip install --no-cache-dir -r /tmp/requirements.txt; \
+      pip install --no-cache-dir -r /tmp/requirements.txt -r /tmp/requirements-finance.txt; \
     else \
-      pip install --no-cache-dir -r /tmp/requirements-core.txt; \
+      pip install --no-cache-dir -r /tmp/requirements-core.txt -r /tmp/requirements-finance.txt; \
     fi
 
 # Single COPY with a matching .dockerignore covers everything that
