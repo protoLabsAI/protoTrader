@@ -58,7 +58,57 @@ export type RuntimeStatus = {
     tools: string[];
     skills: number;
     error?: string;
+    // Console surfaces (ADR 0026): rail views the plugin contributes.
+    views?: PluginView[];
   }[];
+};
+
+// A plugin-contributed console surface (ADR 0026): a rail icon opening an iframe
+// of `path` (served by the plugin), with optional sub-tabs.
+export type PluginView = {
+  id: string;
+  label: string;
+  icon?: string; // a lucide-react icon name
+  path: string;
+  tabs?: { id: string; label: string; path: string }[];
+};
+
+// A git-installed plugin (ADR 0027) — a plugins.lock entry enriched with its
+// manifest + enabled state for the console Plugins panel.
+export type InstalledPlugin = {
+  id: string;
+  source_url: string;
+  requested_ref: string;
+  resolved_sha: string;
+  installed_at?: string;
+  by?: string;
+  present: boolean;
+  enabled: boolean;
+  manifest?: {
+    name: string;
+    version: string;
+    description: string;
+    repository?: string;
+    homepage?: string;
+    capabilities?: Record<string, unknown>;
+    requires_env?: string[];
+    requires_pip?: string[];
+    views?: string[];
+    secrets?: string[];
+  };
+};
+
+// The summary returned right after installing (the review card).
+export type PluginInstallSummary = {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  resolved_sha: string;
+  source_url: string;
+  requires_pip: string[];
+  capabilities: Record<string, unknown>;
+  contributes: { views: string[]; secrets: string[] };
 };
 
 export type SlashCommand = {

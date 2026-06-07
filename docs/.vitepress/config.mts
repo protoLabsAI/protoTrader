@@ -1,10 +1,14 @@
 import { defineConfig } from "vitepress";
 
+// GitHub Pages serves under /protoAgent/; the Cloudflare marketing build folds
+// the docs in at /docs/ (DOCS_BASE=/docs/). Env-driven so both coexist.
+const base = process.env.DOCS_BASE || "/protoAgent/";
+
 export default defineConfig({
   title: "protoAgent",
   description:
     "Template repository for building protoLabs A2A agents on LangGraph.",
-  base: "/protoAgent/",
+  base,
 
   // The protoLabs.studio theme (@protolabsai/vitepress-theme) is dark-first like
   // the marketing site; pin the dark, brand-first ground.
@@ -18,7 +22,7 @@ export default defineConfig({
   // lives in the repo (committed, shared) but is NOT part of the published site.
   srcExclude: ["dev/**"],
 
-  head: [["link", { rel: "icon", href: "/protoAgent/favicon.svg" }]],
+  head: [["link", { rel: "icon", href: `${base}favicon.svg` }]],
 
   themeConfig: {
     logo: "/favicon.svg",
@@ -55,6 +59,8 @@ export default defineConfig({
             { text: "Skills (SKILL.md)", link: "/guides/skills" },
             { text: "MCP servers", link: "/guides/mcp" },
             { text: "Plugins", link: "/guides/plugins" },
+            { text: "Plugin console views", link: "/guides/plugin-views" },
+            { text: "Install & publish plugins (git URLs)", link: "/guides/plugin-registry" },
             { text: "Goal mode", link: "/guides/goal-mode" },
             { text: "Scheduler", link: "/guides/scheduler" },
             { text: "Discord surface", link: "/guides/discord" },

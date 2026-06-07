@@ -272,3 +272,61 @@ def test_registry_exposes_plugin_host() -> None:
     r = PluginRegistry("p", Path("/tmp"))
     assert r.host is HOST                      # the process singleton the server fills
     assert hasattr(r.host, "invoke") and hasattr(r.host, "publish") and hasattr(r.host, "subscribe")
+
+
+# ── console views (ADR 0026) ──────────────────────────────────────────────────
+
+
+def test_manifest_parses_views() -> None:
+    import tempfile
+    from pathlib import Path as _P
+    root = _P(tempfile.mkdtemp())
+    _make_plugin(
+        root, "viewy", enabled=True,
+        manifest_extra=(
+            "views:\n"
+            "  - {id: board, label: Board, icon: LayoutDashboard, path: /plugins/viewy/board}\n"
+            "  - {id: nopath, label: Bad}\n"   # missing path → dropped
+        ),
+    )
+    m = load_manifest(root / "viewy")
+    assert m is not None
+    assert [v["id"] for v in m.views] == ["board"]   # the path-less one is dropped
+    assert m.views[0]["icon"] == "LayoutDashboard"
+
+
+def test_loader_meta_exposes_views_for_enabled_plugin(monkeypatch, tmp_path) -> None:
+    root = tmp_path / "plugins"
+    _make_plugin(
+        root, "viewy", enabled=True, tool="vt",
+        manifest_extra="views:\n  - {id: board, label: Board, path: /plugins/viewy/board}\n",
+    )
+    monkeypatch.setattr(plugin_loader, "_plugin_roots", lambda config: [root])
+    res = load_plugins(_cfg(plugins_enabled=["viewy"]))
+    meta = res.meta[0]
+    assert meta["id"] == "viewy" and meta["enabled"] is True
+    assert [v["id"] for v in meta["views"]] == ["board"]
+
+
+# ── full-bundle auto-discovery (ADR 0027) ─────────────────────────────────────
+
+
+def test_plugin_autodiscovers_workflows_and_skills_dirs(monkeypatch, tmp_path) -> None:
+    root = tmp_path / "plugins"
+    d = _make_plugin(root, "bundle", enabled=True, tool="bt")
+    (d / "workflows").mkdir()
+    (d / "workflows" / "wf.yaml").write_text("name: wf\n", encoding="utf-8")
+    monkeypatch.setattr(plugin_loader, "_plugin_roots", lambda config: [root])
+    res = load_plugins(_cfg(plugins_enabled=["bundle"]))
+    assert any(p.name == "workflows" and "bundle" in str(p) for p in res.workflow_dirs)
+    assert any(p.name == "skills" and "bundle" in str(p) for p in res.skill_dirs)
+
+
+def test_register_workflow_dir(monkeypatch, tmp_path) -> None:
+    root = tmp_path / "plugins"
+    body = "def register(reg):\n    reg.register_workflow_dir('recipes')\n"
+    d = _make_plugin(root, "wfp", enabled=True, body=body)
+    (d / "recipes").mkdir()
+    monkeypatch.setattr(plugin_loader, "_plugin_roots", lambda config: [root])
+    res = load_plugins(_cfg(plugins_enabled=["wfp"]))
+    assert any(p.name == "recipes" for p in res.workflow_dirs)
