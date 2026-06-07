@@ -20,6 +20,14 @@ if [ -f /opt/protoagent/config/SOUL.md ]; then
     cp /opt/protoagent/config/SOUL.md /sandbox/SOUL.md
 fi
 
+# protoTrader is the host harness for the prototrader-finance plugin — it's
+# consumed via plugins.lock, not vendored (ADR 0027). Restore it from the lock at
+# boot. Best-effort: a fetch failure must never block the agent from starting.
+echo "[entrypoint] Syncing git-installed plugins from plugins.lock"
+env PYTHONPATH="/opt/protoagent${PYTHONPATH:+:$PYTHONPATH}" \
+    python -m server plugin sync \
+    || echo "[entrypoint] plugin sync failed — continuing without git-installed plugins"
+
 # ADR 0023: server.py was promoted to a `server/` package. Launch it as a
 # module with the install dir on PYTHONPATH so the package (and its sibling
 # top-level modules: paths, events, graph, …) resolve, while keeping the

@@ -196,6 +196,15 @@ tools:
   #   enabled: false
   #   keep: []
 
+# Plugins — drop-in extensions (ADR 0018/0019/0026/0027). protoTrader is the host
+# harness for the prototrader-finance plugin: rather than vendoring it, the fork
+# installs it from its own repo (pinned in plugins.lock) and enables it here.
+# `python -m server plugin sync` restores the code from the lock (CI + the image
+# do this); with the code absent, `enabled` simply means the finance tools don't load.
+plugins:
+  enabled:
+    - prototrader-finance
+
 # React operator console — the beads/notes APIs accept a project path from
 # the (free-text) UI, so the server, not the client, decides which
 # directories they may touch. The protoAgent repo root is always allowed;

@@ -225,17 +225,28 @@ def test_new_cases_present_and_valid():
 
 
 def test_workflow_cases_reference_real_recipes():
-    # The recipes the cases drive must actually be bundled — discoverable the same
-    # way the runtime registry resolves them (server/agent_init._build_workflow_
-    # registry): the global workflows/ dir PLUS any plugin-bundled workflows/ subdir
-    # (ADR 0027 full-bundle auto-discovery). quant-desk now ships inside the
-    # prototrader-finance plugin, not the global dir.
+    # The recipes the cases drive must be resolvable the same way the runtime
+    # registry resolves them (server/agent_init._build_workflow_registry): the
+    # global workflows/ dir PLUS every plugin's workflows/ subdir (ADR 0027
+    # full-bundle auto-discovery) — bundled plugins AND git-installed ones in the
+    # live plugins dir. quant-desk / investment-committee now ship inside the
+    # git-installed prototrader-finance plugin (restored by `plugin sync`), not the
+    # global dir — so a case referencing one needs the plugin synced.
+    from graph.plugins.installer import live_plugins_dir
+
     root = Path(__file__).parent.parent
+    plugin_synced = (live_plugins_dir() / "prototrader-finance").exists()
     bundled = {p.stem for p in root.glob("workflows/*.yaml")}
     bundled |= {p.stem for p in root.glob("plugins/*/workflows/*.yaml")}
+    bundled |= {p.stem for p in live_plugins_dir().glob("*/workflows/*.yaml")}
     for c in TASKS:
-        if c.get("kind") == "workflow":
-            assert c["workflow"] in bundled, f"{c['id']} → unknown recipe {c['workflow']!r}"
+        if c.get("kind") != "workflow":
+            continue
+        if c["workflow"] not in bundled and not plugin_synced:
+            # The recipe is provided by a git-installed plugin that isn't synced in
+            # this environment — CI runs `plugin sync` first, so skip rather than fail.
+            pytest.skip(f"recipe {c['workflow']!r} is plugin-provided — run `python -m server plugin sync`")
+        assert c["workflow"] in bundled, f"{c['id']} → unknown recipe {c['workflow']!r}"
 
 
 # ── requires_env skip mechanism (ADR 0024 coding-agent eval) ──────────────────
