@@ -11,8 +11,8 @@ import pytest
 
 def _engine():
     spec = importlib.util.spec_from_file_location(
-        "bt_engine", "plugins/backtest/engine.py",
-        submodule_search_locations=["plugins/backtest"],
+        "bt_engine", "plugins/prototrader-finance/backtest/engine.py",
+        submodule_search_locations=["plugins/prototrader-finance/backtest"],
     )
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)

@@ -11,8 +11,8 @@ import yaml
 
 def _subagents_module():
     spec = importlib.util.spec_from_file_location(
-        "finance_desk_sub", "plugins/finance-desk/subagents.py",
-        submodule_search_locations=["plugins/finance-desk"],
+        "finance_desk_sub", "plugins/prototrader-finance/desk/subagents.py",
+        submodule_search_locations=["plugins/prototrader-finance/desk"],
     )
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -34,7 +34,7 @@ def test_three_desk_subagents_with_tools():
 def test_workflow_presets_valid_and_reference_desk_subagents():
     desk = {"market-analyst", "quant", "risk-manager"}
     for name in ("investment-committee", "quant-desk"):
-        wf = yaml.safe_load(Path(f"workflows/{name}.yaml").read_text())
+        wf = yaml.safe_load(Path(f"plugins/prototrader-finance/workflows/{name}.yaml").read_text())
         assert wf["name"] == name
         assert wf["inputs"] and wf["steps"]
         step_ids = {s["id"] for s in wf["steps"]}

@@ -12,8 +12,8 @@ import importlib.util
 def _engine(tmp_path, monkeypatch):
     import sys
     spec = importlib.util.spec_from_file_location(
-        "brk_engine", "plugins/broker/engine.py",
-        submodule_search_locations=["plugins/broker"],
+        "brk_engine", "plugins/prototrader-finance/broker/engine.py",
+        submodule_search_locations=["plugins/prototrader-finance/broker"],
     )
     m = importlib.util.module_from_spec(spec)
     sys.modules["brk_engine"] = m  # dataclasses resolve cls.__module__ here
