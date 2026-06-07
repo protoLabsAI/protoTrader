@@ -7,8 +7,8 @@ import importlib.util
 
 def _engine():
     spec = importlib.util.spec_from_file_location(
-        "beh_engine", "plugins/behavioral/engine.py",
-        submodule_search_locations=["plugins/behavioral"],
+        "beh_engine", "plugins/prototrader-finance/behavioral/engine.py",
+        submodule_search_locations=["plugins/prototrader-finance/behavioral"],
     )
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)

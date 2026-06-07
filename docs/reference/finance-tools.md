@@ -1,10 +1,13 @@
 # Finance tools
 
 protoTrader's **finance domain layer** — the tools the fork adds on top of the
-[starter tools](/reference/starter-tools). They ship as plugins
-(`plugins/finance-data`, `backtest`, `factors`, `behavioral`, `broker`), each
-disable-able via `plugins.disabled: [<name>]`, and they don't edit any
-upstream file — so they survive re-syncs from protoAgent untouched.
+[starter tools](/reference/starter-tools). They ship as **one full-bundle plugin**,
+`plugins/prototrader-finance` (the plugin-devkit pattern) — tools + the research
+desk subagents + the `quant-desk` / `investment-committee` workflows + finance
+skills + a Quant Desk dashboard console view, in a single self-contained directory.
+Disable it with `plugins.disabled: [prototrader-finance]`; it edits no upstream
+file, so it survives re-syncs from protoAgent, and it installs into any protoAgent
+via `plugin install <git-url>` (ADR 0027).
 
 All finance tools return a **human-readable string** (no raw JSON) and degrade
 to a clear `Error: …` string rather than raising — the model reads the error and
@@ -174,7 +177,7 @@ factor < 1).
 
 The broker is **paper-only** and **off by default**. It refuses to do anything
 until a mandate is armed in `config/broker_mandate.yaml`
-(copy `config/broker_mandate.example.yaml`); `mode: live` is deliberately
+(copy `plugins/prototrader-finance/broker/broker_mandate.example.yaml`); `mode: live` is deliberately
 refused, and a `config/TRADING_HALT` file is an instant kill-switch.
 
 ### `broker_account`

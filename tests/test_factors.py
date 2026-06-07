@@ -11,8 +11,8 @@ import pytest
 
 def _engine():
     spec = importlib.util.spec_from_file_location(
-        "fac_engine", "plugins/factors/engine.py",
-        submodule_search_locations=["plugins/factors"],
+        "fac_engine", "plugins/prototrader-finance/factors/engine.py",
+        submodule_search_locations=["plugins/prototrader-finance/factors"],
     )
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)

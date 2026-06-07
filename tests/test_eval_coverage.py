@@ -225,8 +225,14 @@ def test_new_cases_present_and_valid():
 
 
 def test_workflow_cases_reference_real_recipes():
-    # The recipes the cases drive must actually be bundled.
-    bundled = {p.stem for p in (Path(__file__).parent.parent / "workflows").glob("*.yaml")}
+    # The recipes the cases drive must actually be bundled — discoverable the same
+    # way the runtime registry resolves them (server/agent_init._build_workflow_
+    # registry): the global workflows/ dir PLUS any plugin-bundled workflows/ subdir
+    # (ADR 0027 full-bundle auto-discovery). quant-desk now ships inside the
+    # prototrader-finance plugin, not the global dir.
+    root = Path(__file__).parent.parent
+    bundled = {p.stem for p in root.glob("workflows/*.yaml")}
+    bundled |= {p.stem for p in root.glob("plugins/*/workflows/*.yaml")}
     for c in TASKS:
         if c.get("kind") == "workflow":
             assert c["workflow"] in bundled, f"{c['id']} → unknown recipe {c['workflow']!r}"

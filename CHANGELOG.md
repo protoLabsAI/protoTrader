@@ -11,6 +11,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The finance domain layer is now one full-bundle plugin — `plugins/prototrader-finance`.**
+  Consolidated the six separate finance plugins (`finance-data`, `backtest`,
+  `factors`, `behavioral`, `broker`, `finance-desk`) **and** the two global
+  workflow presets into a single self-contained, git-URL-installable bundle, on
+  the upstream `plugin-devkit` pattern — every protoAgent contribution type in one
+  directory:
+  - **tools** (13) — market data, vectorized backtest, factor IC, behavioral
+    journal, gated paper broker (now `data` / `backtest` / `factors` /
+    `behavioral` / `broker` subpackages);
+  - **subagents** — the 3-role research desk (`desk`);
+  - **workflows** + **skills** — `quant-desk` / `investment-committee` and the
+    finance SKILL.md set, bundled in the plugin's `workflows/` + `skills/` subdirs
+    and **auto-discovered** (ADR 0027 full-bundle), no longer in the global dirs;
+  - **console view** — a **Quant Desk dashboard** (equity-curve backtester with
+    the ADR 0026 auth/theme handshake) served at
+    `/plugins/prototrader-finance/dashboard`, declared via the manifest `views:`;
+  - **config / secrets / settings** (ADR 0019) — default benchmark, optional
+    market-data key, broker-mandate path.
+  The broker stays **paper-first, HITL-gated, kill-switchable** — distribution
+  never relaxes that. Installable into any protoAgent via `plugin install
+  <git-url>`; the next step is extracting it to its own `prototrader-finance`
+  repo. New `tests/test_prototrader_finance_plugin.py` proves the full surface
+  loads and the old plugin dirs are gone; the five finance engine tests + the eval
+  workflow-coverage test follow the recipes into the plugin.
+
 ### Changed
 - **Synced upstream protoAgent → v0.21.0 (46 commits; real merge).** Brings the
   v0.19–v0.21 batch — the **plugin distribution + console-surface arc** that
