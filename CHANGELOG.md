@@ -11,6 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Synced upstream protoAgent → v0.21.0 (46 commits; real merge).** Brings the
+  v0.19–v0.21 batch — the **plugin distribution + console-surface arc** that
+  turns plugins into a full, shippable extension unit:
+  - **ADR 0026 — plugin-contributed console surfaces.** A plugin declares
+    `views:` in its manifest and the console renders a **left-rail icon + iframe**
+    hosting a page it serves at `/plugins/<id>/…`, with sub-tabs and a
+    `postMessage` **auth + theme handshake** — "ADR 0018 for the frontend." No
+    console rebuild. (#618–#621)
+  - **ADR 0027 — install plugins from a git URL.** `plugin install <git-url>`
+    (CLI **and** a console **Plugins** panel) clones into the live plugins dir,
+    **pins a SHA in `plugins.lock`**, shows a capability **review gate**, and
+    supports **full-bundle repos** that auto-discover `skills/` + `workflows/`
+    subdirs. Framed **install ≠ enable ≠ trust**; untrusted code → MCP.
+    (#623–#630)
+  - **`plugin-devkit`** — the canonical reference plugin demonstrating *every*
+    contribution type (tool, subagent, skill, workflow, console view, config) +
+    a `scaffold_plugin` tool and `building-plugins` skill. (#630)
+  - Plus the fleet batch: delegates API/plugin test hardening, MCP tool
+    error handling, eval-coverage + audit-hardening + metrics tests.
+  Fork identity (README, `pyproject` name/version `0.16.0`, `identity_name`,
+  docs landing page) preserved; the **finance domain layer is untouched
+  upstream — zero conflicts there**. Sets up shipping the finance layer as a
+  standalone, git-URL-installable full-bundle plugin.
+
 ## [0.16.0] - 2026-06-06
 
 ### Changed
